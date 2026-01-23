@@ -1,24 +1,25 @@
 package com.taskmanager.backend.model;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.persistence.*;
 
+@Entity
+@Table(name = "tasks")
 public class Task {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Title is required")
     private String title;
 
     private boolean completed;
 
     public Task() {
-        this.completed = false;
     }
 
-    public Task(Long id, String title, boolean completed) {
-        this.id = id;
+    public Task(String title) {
         this.title = title;
-        this.completed = completed;
+        this.completed = false;
     }
 
     public Long getId() {
@@ -43,14 +44,5 @@ public class Task {
 
     public void setCompleted(boolean completed) {
         this.completed = completed;
-    }
-
-    @Override
-    public String toString() {
-        return "Task{" +
-                "id=" + id +
-                ", title='" + title + '\'' +
-                ", completed=" + completed +
-                '}';
     }
 }
