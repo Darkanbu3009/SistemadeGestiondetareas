@@ -1,55 +1,38 @@
 package com.taskmanager.backend.service;
 
-import com.taskmanager.backend.exception.TaskNotFoundException;
 import com.taskmanager.backend.model.Task;
+import com.taskmanager.backend.repository.TaskRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class TaskService {
 
-    private final List<Task> tasks = new ArrayList<>();
-    private final AtomicLong idCounter = new AtomicLong(1);
+    private final TaskRepository repository;
+
+    public TaskService(TaskRepository repository) {
+        this.repository = repository;
+    }
 
     public List<Task> getAllTasks() {
-        return new ArrayList<>(tasks);
+        return repository.findAll();
     }
 
-    public Task createTask(String title) {
-        Task task = new Task();
-        task.setId(idCounter.getAndIncrement());
-        task.setTitle(title);
+    public Task createTask(Task task) {
         task.setCompleted(false);
-        tasks.add(task);
-        return task;
+        return repository.save(task); // 🔥 AQUÍ SE GUARDA
     }
 
-    public Task updateTask(Long id) {
-        Task task = tasks.stream()
-                .filter(t -> t.getId().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new TaskNotFoundException(id));
+    public Task toggleTask(Long id) {
+        Task task = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
 
         task.setCompleted(!task.isCompleted());
-        return task;
+        return repository.save(task);
     }
 
     public void deleteTask(Long id) {
-        Task task = tasks.stream()
-                .filter(t -> t.getId().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new TaskNotFoundException(id));
-
-        tasks.remove(task);
-    }
-
-    public Task getTaskById(Long id) {
-        return tasks.stream()
-                .filter(t -> t.getId().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new TaskNotFoundException(id));
+        repository.deleteById(id);
     }
 }

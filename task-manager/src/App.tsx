@@ -4,64 +4,95 @@ import { TaskForm } from './components/TaskForm';
 import { TaskList } from './components/TaskList';
 import './App.css';
 
-const API_URL = "https://ominous-space-halibut-55g4p49jrvgc4x4r-8080.app.github.dev/api/tasks";
+// ✅ URL correcta del backend en Codespaces
+const API_URL =
+  "https://ominous-space-halibut-55g4p49jrvgc4x4r-8080.app.github.dev/api/tasks";
 
 function App() {
-  // PASO 2.2 — Estado SIN mock
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // PASO 2.2 — Cargar tareas desde backend (GET)
+  // ✅ GET — cargar tareas desde backend
   useEffect(() => {
     fetch(API_URL)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("Error al cargar tareas");
+        }
+        return res.json();
+      })
       .then(data => setTasks(data))
-      .catch(err => console.error(err));
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
   }, []);
 
-  // PASO 2.3 — Crear tarea (POST real)
+  // ✅ POST — crear tarea (SOLO title)
   const handleAddTask = async (title: string) => {
     const res = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ title, completed: false }),
+      body: JSON.stringify({ title }),
     });
+
+    if (!res.ok) {
+      console.error("Error al crear tarea");
+      return;
+    }
 
     const newTask = await res.json();
     setTasks(prev => [...prev, newTask]);
   };
 
-  // PASO 2.4 — Toggle completar tarea (PUT real)
+  // ✅ PUT — toggle completed
   const handleToggleComplete = async (id: number) => {
     const res = await fetch(`${API_URL}/${id}`, {
       method: "PUT",
     });
 
+    if (!res.ok) {
+      console.error("Error al actualizar tarea");
+      return;
+    }
+
     const updatedTask = await res.json();
     setTasks(prev =>
-      prev.map(t => (t.id === id ? updatedTask : t))
+      prev.map(task =>
+        task.id === id ? updatedTask : task
+      )
     );
   };
 
-  // PASO 2.5 — Eliminar tarea (DELETE real)
+  // ✅ DELETE — eliminar tarea
   const handleDeleteTask = async (id: number) => {
-    await fetch(`${API_URL}/${id}`, {
+    const res = await fetch(`${API_URL}/${id}`, {
       method: "DELETE",
     });
 
-    setTasks(prev => prev.filter(t => t.id !== id));
+    if (!res.ok) {
+      console.error("Error al eliminar tarea");
+      return;
+    }
+
+    setTasks(prev => prev.filter(task => task.id !== id));
   };
 
   const completedCount = tasks.filter(task => task.completed).length;
   const totalCount = tasks.length;
+
+  if (loading) {
+    return <p style={{ textAlign: "center" }}>Cargando tareas...</p>;
+  }
 
   return (
     <div className="app">
       <div className="container">
         <header className="app-header">
           <h1>Task Manager</h1>
-          <p className="subtitle">Gestiona tus tareas de forma simple y efectiva</p>
+          <p className="subtitle">
+            Gestiona tus tareas de forma simple y efectiva
+          </p>
           <div className="stats">
             <span>{completedCount} de {totalCount} completadas</span>
           </div>
