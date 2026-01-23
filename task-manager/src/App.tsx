@@ -17,7 +17,6 @@ function App() {
   useEffect(() => {
     fetch(API_URL, {
       method: "GET",
-      credentials: "include",  // ← IMPORTANTE para CORS con credenciales
       headers: {
         "Content-Type": "application/json",
       },
@@ -47,7 +46,6 @@ function App() {
       
       const res = await fetch(API_URL, {
         method: "POST",
-        credentials: "include",  // ← IMPORTANTE para CORS con credenciales
         headers: {
           "Content-Type": "application/json",
         },
@@ -78,7 +76,6 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
-        credentials: "include",  // ← IMPORTANTE para CORS con credenciales
         headers: {
           "Content-Type": "application/json",
         },
@@ -109,7 +106,6 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: "DELETE",
-        credentials: "include",  // ← IMPORTANTE para CORS con credenciales
         headers: {
           "Content-Type": "application/json",
         },
