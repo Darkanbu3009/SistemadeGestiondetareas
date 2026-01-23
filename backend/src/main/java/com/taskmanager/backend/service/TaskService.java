@@ -1,5 +1,6 @@
 package com.taskmanager.backend.service;
 
+import com.taskmanager.backend.exception.TaskNotFoundException;
 import com.taskmanager.backend.model.Task;
 import com.taskmanager.backend.repository.TaskRepository;
 import org.springframework.stereotype.Service;
@@ -21,18 +22,21 @@ public class TaskService {
 
     public Task createTask(Task task) {
         task.setCompleted(false);
-        return repository.save(task); // 🔥 AQUÍ SE GUARDA
+        return repository.save(task);
     }
 
     public Task toggleTask(Long id) {
         Task task = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new TaskNotFoundException(id));
 
         task.setCompleted(!task.isCompleted());
         return repository.save(task);
     }
 
     public void deleteTask(Long id) {
+        if (!repository.existsById(id)) {
+            throw new TaskNotFoundException(id);
+        }
         repository.deleteById(id);
     }
 }
