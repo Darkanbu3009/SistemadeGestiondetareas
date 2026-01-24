@@ -8,6 +8,9 @@ git commit -m "Describe tus cambios"
 git push origin main
 git status
 
+Traerte actualizaciones de Github web a Github code spaces
+git pull origin main
+
 Cierra Front end y back end
 Control C
 
