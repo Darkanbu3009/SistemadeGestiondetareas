@@ -1,7 +1,9 @@
+version: '3.8'
+
 services:
   postgres:
-    image: postgres:15
-    container_name: taskmanager-postgres
+    image: postgres:15-alpine
+    container_name: taskmanager-db
     environment:
       POSTGRES_DB: taskmanager
       POSTGRES_USER: taskuser
@@ -10,6 +12,58 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskmanager-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskuser -d taskmanager"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskmanager-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/taskmanager
+      SPRING_DATASOURCE_USERNAME: taskuser
+      SPRING_DATASOURCE_PASSWORD: taskpass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - taskmanager-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/tasks"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./task-manager
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/tasks
+    container_name: taskmanager-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - taskmanager-network
+    restart: unless-stopped
+
+networks:
+  taskmanager-network:
+    driver: bridge
 
 volumes:
   postgres_data:

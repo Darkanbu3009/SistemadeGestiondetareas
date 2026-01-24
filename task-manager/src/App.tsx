@@ -4,124 +4,80 @@ import { TaskForm } from './components/TaskForm';
 import { TaskList } from './components/TaskList';
 import './App.css';
 
-// ✅ URL del backend en Codespaces
-const API_URL =
-  "https://ominous-space-halibut-55g4p49jrvgc4x4r-8080.app.github.dev/api/tasks";
+const API_URL = import.meta.env.VITE_API_URL || "/api/tasks";
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ GET — cargar tareas desde backend
   useEffect(() => {
     fetch(API_URL, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     })
       .then(res => {
-        if (!res.ok) {
-          throw new Error(`Error ${res.status}: ${res.statusText}`);
-        }
+        if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
         return res.json();
       })
       .then(data => {
-        console.log("Tareas cargadas:", data);
         setTasks(data);
         setError(null);
       })
-      .catch(err => {
-        console.error("Error al cargar tareas:", err);
-        setError(err.message);
-      })
+      .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
-  // ✅ POST — crear tarea
   const handleAddTask = async (title: string) => {
     try {
-      console.log("Creando tarea:", title);
-      
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
       });
-
-      console.log("Respuesta POST status:", res.status);
-
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Error en respuesta:", errorText);
         setError(`Error al crear tarea: ${res.status}`);
         return;
       }
-
       const newTask = await res.json();
-      console.log("Tarea creada:", newTask);
       setTasks(prev => [...prev, newTask]);
       setError(null);
     } catch (err) {
-      console.error("Error al crear tarea:", err);
       setError("Error de conexión al crear tarea");
     }
   };
 
-  // ✅ PUT — toggle completed
   const handleToggleComplete = async (id: number) => {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
-
       if (!res.ok) {
-        console.error("Error al actualizar tarea:", res.status);
         setError(`Error al actualizar tarea: ${res.status}`);
         return;
       }
-
       const updatedTask = await res.json();
-      console.log("Tarea actualizada:", updatedTask);
-      setTasks(prev =>
-        prev.map(task =>
-          task.id === id ? updatedTask : task
-        )
-      );
+      setTasks(prev => prev.map(task => task.id === id ? updatedTask : task));
       setError(null);
     } catch (err) {
-      console.error("Error al actualizar tarea:", err);
       setError("Error de conexión al actualizar tarea");
     }
   };
 
-  // ✅ DELETE — eliminar tarea
   const handleDeleteTask = async (id: number) => {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
-
       if (!res.ok) {
-        console.error("Error al eliminar tarea:", res.status);
         setError(`Error al eliminar tarea: ${res.status}`);
         return;
       }
-
-      console.log("Tarea eliminada:", id);
       setTasks(prev => prev.filter(task => task.id !== id));
       setError(null);
     } catch (err) {
-      console.error("Error al eliminar tarea:", err);
       setError("Error de conexión al eliminar tarea");
     }
   };
@@ -138,14 +94,11 @@ function App() {
       <div className="container">
         <header className="app-header">
           <h1>Task Manager</h1>
-          <p className="subtitle">
-            Gestiona tus tareas de forma simple y efectiva
-          </p>
+          <p className="subtitle">Gestiona tus tareas de forma simple y efectiva</p>
           <div className="stats">
             <span>{completedCount} de {totalCount} completadas</span>
           </div>
         </header>
-
         <main className="app-main">
           {error && (
             <div style={{
@@ -160,7 +113,6 @@ function App() {
               ⚠️ {error}
             </div>
           )}
-          
           <TaskForm onAddTask={handleAddTask} />
           <TaskList
             tasks={tasks}
