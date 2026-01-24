@@ -28,3 +28,14 @@ docker compose up -d
 
 Prueba el endpoint:
 curl https://ominous-space-halibut-55g4p49jrvgc4x4r-8080.app.github.dev/api/tasks
+
+El proyecto está completamente dockerizado.
+Iniciar todo docker-compose up -d
+Detener todo docker-compose down
+Reiniciar todo docker-compose restart
+Ver logs docker-compose logs -f
+Ver estado docker-compose ps
+
+
+
+
