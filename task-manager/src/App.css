@@ -13,6 +13,10 @@
   overflow: hidden;
 }
 
+.auth-container {
+  max-width: 400px;
+}
+
 .app-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -32,6 +36,14 @@
   opacity: 0.9;
 }
 
+.header-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .stats {
   background: rgba(255, 255, 255, 0.2);
   padding: 0.5rem 1rem;
@@ -42,6 +54,73 @@
 
 .app-main {
   padding: 2rem;
+}
+
+/* Auth Forms */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-form h2 {
+  text-align: center;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.form-group input {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.form-error {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #dc2626;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 1rem;
+  color: #64748b;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #667eea;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: inherit;
+}
+
+.link-button:hover {
+  text-decoration: underline;
 }
 
 /* TaskForm */
@@ -65,6 +144,7 @@
   border-color: #667eea;
 }
 
+/* Buttons */
 .btn {
   padding: 0.75rem 1.5rem;
   border: none;
@@ -86,6 +166,10 @@
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
+.btn-block {
+  width: 100%;
+}
+
 .btn-danger {
   background: #ef4444;
   color: white;
@@ -97,6 +181,28 @@
   background: #dc2626;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.btn-logout {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.btn-logout:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Error Message */
+.error-message {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #dc2626;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
 }
 
 /* TaskList */
@@ -182,5 +288,9 @@
 
   .task-input {
     width: 100%;
+  }
+
+  .header-actions {
+    flex-direction: column;
   }
 }
