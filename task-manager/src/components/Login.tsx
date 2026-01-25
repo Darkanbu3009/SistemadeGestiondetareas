@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 
 interface LoginProps {
   onLogin: (email: string, password: string) => void;
