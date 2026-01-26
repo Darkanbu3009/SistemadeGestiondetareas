@@ -5,13 +5,15 @@ interface TaskListProps {
   tasks: Task[];
   onToggleComplete: (id: number) => void;
   onDeleteTask: (id: number) => void;
+  onEditTask: (task: Task) => void;
+  onUpdateProgress: (id: number, progress: number) => void;
 }
 
-export const TaskList = ({ tasks, onToggleComplete, onDeleteTask }: TaskListProps) => {
+export const TaskList = ({ tasks, onToggleComplete, onDeleteTask, onEditTask, onUpdateProgress }: TaskListProps) => {
   if (tasks.length === 0) {
     return (
       <div className="empty-state">
-        <p>No hay tareas pendientes. ¡Agrega una nueva tarea para comenzar!</p>
+        <p>No hay tareas pendientes. Agrega una nueva tarea para comenzar.</p>
       </div>
     );
   }
@@ -24,6 +26,8 @@ export const TaskList = ({ tasks, onToggleComplete, onDeleteTask }: TaskListProp
           task={task}
           onToggleComplete={onToggleComplete}
           onDeleteTask={onDeleteTask}
+          onEditTask={onEditTask}
+          onUpdateProgress={onUpdateProgress}
         />
       ))}
     </div>
