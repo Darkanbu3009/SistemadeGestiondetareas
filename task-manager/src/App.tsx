@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Task } from './types/Task';
 import { TaskForm } from './components/TaskForm';
 import { TaskList } from './components/TaskList';
+import { Dashboard } from './components/Dashboard';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import './App.css';
@@ -14,6 +15,8 @@ interface User {
   email: string;
 }
 
+type Page = 'dashboard' | 'tasks';
+
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,12 +24,14 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [showRegister, setShowRegister] = useState(false);
+  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Check if user is logged in on mount
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
-    
+
     if (savedToken && savedUser) {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
@@ -83,7 +88,7 @@ function App() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || 'Error al iniciar sesión');
+        setError(data.message || 'Error al iniciar sesion');
         return;
       }
 
@@ -91,8 +96,9 @@ function App() {
       localStorage.setItem('user', JSON.stringify({ id: data.id, name: data.name, email: data.email }));
       setToken(data.token);
       setUser({ id: data.id, name: data.name, email: data.email });
+      setCurrentPage('dashboard');
     } catch (err) {
-      setError('Error de conexión');
+      setError('Error de conexion');
     }
   };
 
@@ -116,8 +122,9 @@ function App() {
       localStorage.setItem('user', JSON.stringify({ id: data.id, name: data.name, email: data.email }));
       setToken(data.token);
       setUser({ id: data.id, name: data.name, email: data.email });
+      setCurrentPage('dashboard');
     } catch (err) {
-      setError('Error de conexión');
+      setError('Error de conexion');
     }
   };
 
@@ -128,6 +135,8 @@ function App() {
     setUser(null);
     setTasks([]);
     setLoading(false);
+    setCurrentPage('dashboard');
+    setEditingTask(null);
   };
 
   const handleAddTask = async (title: string) => {
@@ -155,7 +164,7 @@ function App() {
       setTasks(prev => [newTask, ...prev]);
       setError(null);
     } catch (err) {
-      setError('Error de conexión');
+      setError('Error de conexion');
     }
   };
 
@@ -183,7 +192,7 @@ function App() {
       setTasks(prev => prev.map(task => task.id === id ? updatedTask : task));
       setError(null);
     } catch (err) {
-      setError('Error de conexión');
+      setError('Error de conexion');
     }
   };
 
@@ -210,7 +219,74 @@ function App() {
       setTasks(prev => prev.filter(task => task.id !== id));
       setError(null);
     } catch (err) {
-      setError('Error de conexión');
+      setError('Error de conexion');
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTask(null);
+  };
+
+  const handleSaveEdit = async (id: number, title: string, progress: number) => {
+    try {
+      const res = await fetch(`${API_URL}/tasks/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title, progress }),
+      });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      if (!res.ok) {
+        setError('Error al actualizar tarea');
+        return;
+      }
+
+      const updatedTask = await res.json();
+      setTasks(prev => prev.map(task => task.id === id ? updatedTask : task));
+      setEditingTask(null);
+      setError(null);
+    } catch (err) {
+      setError('Error de conexion');
+    }
+  };
+
+  const handleUpdateProgress = async (id: number, progress: number) => {
+    try {
+      const res = await fetch(`${API_URL}/tasks/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ progress }),
+      });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      if (!res.ok) {
+        setError('Error al actualizar progreso');
+        return;
+      }
+
+      const updatedTask = await res.json();
+      setTasks(prev => prev.map(task => task.id === id ? updatedTask : task));
+      setError(null);
+    } catch (err) {
+      setError('Error de conexion');
     }
   };
 
@@ -226,16 +302,16 @@ function App() {
 
           <main className="app-main">
             {error && (
-              <div className="error-message">⚠️ {error}</div>
+              <div className="error-message">{error}</div>
             )}
 
             {showRegister ? (
               <>
                 <Register onRegister={handleRegister} />
                 <p className="auth-switch">
-                  ¿Ya tienes cuenta?{' '}
+                  Ya tienes cuenta?{' '}
                   <button onClick={() => setShowRegister(false)} className="link-button">
-                    Iniciar Sesión
+                    Iniciar Sesion
                   </button>
                 </p>
               </>
@@ -243,7 +319,7 @@ function App() {
               <>
                 <Login onLogin={handleLogin} />
                 <p className="auth-switch">
-                  ¿No tienes cuenta?{' '}
+                  No tienes cuenta?{' '}
                   <button onClick={() => setShowRegister(true)} className="link-button">
                     Registrarse
                   </button>
@@ -256,13 +332,39 @@ function App() {
     );
   }
 
-  const completedCount = tasks.filter(task => task.completed).length;
-  const totalCount = tasks.length;
-
   if (loading) {
     return <p style={{ textAlign: 'center', marginTop: '2rem' }}>Cargando...</p>;
   }
 
+  const completedCount = tasks.filter(task => task.completed).length;
+  const totalCount = tasks.length;
+
+  // Render Dashboard
+  if (currentPage === 'dashboard') {
+    return (
+      <div className="app">
+        <div className="container dashboard-container">
+          <header className="app-header">
+            <h1>Task Manager</h1>
+            <p className="subtitle">Panel de Control</p>
+          </header>
+          <main className="app-main">
+            {error && (
+              <div className="error-message">{error}</div>
+            )}
+            <Dashboard
+              user={user}
+              tasks={tasks}
+              onNavigateToTasks={() => setCurrentPage('tasks')}
+              onLogout={handleLogout}
+            />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Tasks Page
   return (
     <div className="app">
       <div className="container">
@@ -273,22 +375,32 @@ function App() {
             <div className="stats">
               <span>{completedCount} de {totalCount} completadas</span>
             </div>
+            <button onClick={() => setCurrentPage('dashboard')} className="btn btn-nav">
+              Dashboard
+            </button>
             <button onClick={handleLogout} className="btn btn-logout">
-              Cerrar Sesión
+              Cerrar Sesion
             </button>
           </div>
         </header>
 
         <main className="app-main">
           {error && (
-            <div className="error-message">⚠️ {error}</div>
+            <div className="error-message">{error}</div>
           )}
 
-          <TaskForm onAddTask={handleAddTask} />
+          <TaskForm
+            onAddTask={handleAddTask}
+            onSaveEdit={handleSaveEdit}
+            editingTask={editingTask}
+            onCancelEdit={handleCancelEdit}
+          />
           <TaskList
             tasks={tasks}
             onToggleComplete={handleToggleComplete}
             onDeleteTask={handleDeleteTask}
+            onEditTask={handleEditTask}
+            onUpdateProgress={handleUpdateProgress}
           />
         </main>
       </div>

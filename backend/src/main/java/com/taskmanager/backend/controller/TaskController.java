@@ -1,6 +1,7 @@
 package com.taskmanager.backend.controller;
 
 import com.taskmanager.backend.model.Task;
+import com.taskmanager.backend.model.TaskRequest;
 import com.taskmanager.backend.model.User;
 import com.taskmanager.backend.repository.UserRepository;
 import com.taskmanager.backend.service.TaskService;
@@ -48,6 +49,13 @@ public class TaskController {
     public ResponseEntity<Task> toggleTask(@PathVariable Long id) {
         User user = getCurrentUser();
         Task updated = service.toggleTask(id, user);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody TaskRequest request) {
+        User user = getCurrentUser();
+        Task updated = service.updateTask(id, request, user);
         return ResponseEntity.ok(updated);
     }
 
