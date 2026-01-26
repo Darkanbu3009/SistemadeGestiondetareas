@@ -29,7 +29,7 @@ services:
       context: ./task-manager
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: /api/tasks
+        VITE_API_URL: /api
     container_name: taskmanager-frontend
     ports:
       - "80:80"
