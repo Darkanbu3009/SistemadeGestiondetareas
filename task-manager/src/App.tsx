@@ -293,41 +293,22 @@ function App() {
   // Show login/register if not authenticated
   if (!token || !user) {
     return (
-      <div className="app">
-        <div className="container auth-container">
-          <header className="app-header">
-            <h1>Task Manager</h1>
-            <p className="subtitle">Gestiona tus tareas de forma simple y efectiva</p>
-          </header>
+      <div className="auth-wrapper">
+        {error && (
+          <div className="auth-error-toast">{error}</div>
+        )}
 
-          <main className="app-main">
-            {error && (
-              <div className="error-message">{error}</div>
-            )}
-
-            {showRegister ? (
-              <>
-                <Register onRegister={handleRegister} />
-                <p className="auth-switch">
-                  Ya tienes cuenta?{' '}
-                  <button onClick={() => setShowRegister(false)} className="link-button">
-                    Iniciar Sesion
-                  </button>
-                </p>
-              </>
-            ) : (
-              <>
-                <Login onLogin={handleLogin} />
-                <p className="auth-switch">
-                  No tienes cuenta?{' '}
-                  <button onClick={() => setShowRegister(true)} className="link-button">
-                    Registrarse
-                  </button>
-                </p>
-              </>
-            )}
-          </main>
-        </div>
+        {showRegister ? (
+          <Register
+            onRegister={handleRegister}
+            onSwitchToLogin={() => setShowRegister(false)}
+          />
+        ) : (
+          <Login
+            onLogin={handleLogin}
+            onSwitchToRegister={() => setShowRegister(true)}
+          />
+        )}
       </div>
     );
   }
