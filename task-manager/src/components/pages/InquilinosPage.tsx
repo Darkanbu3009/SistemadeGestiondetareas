@@ -1,138 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Inquilino, InquilinoFormData } from '../../types';
-
-// Mock data
-const mockInquilinos: Inquilino[] = [
-  {
-    id: 1,
-    nombre: 'Jose',
-    apellido: 'Perez',
-    email: 'jose.perez@email.com',
-    telefono: '+56 9 1234 5678',
-    documento: '12345678-9',
-    avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-    propiedadId: 1,
-    propiedad: {
-      id: 1,
-      nombre: 'Apartment 3A',
-      direccion: 'Av. Las Condes 123',
-      ciudad: 'Santiago',
-      pais: 'Chile',
-      tipo: 'apartamento',
-      rentaMensual: 800,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    contratoEstado: 'activo',
-    contratoFin: '2024-10-10',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 2,
-    nombre: 'Alejandro',
-    apellido: 'Garcia',
-    email: 'alejandro.garcia@email.com',
-    telefono: '+54 11 5678 9012',
-    documento: '98765432',
-    avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
-    propiedadId: 2,
-    propiedad: {
-      id: 2,
-      nombre: 'Casa en Palermo',
-      direccion: 'Calle Serrano 463',
-      ciudad: 'Buenos Aires',
-      pais: 'Argentina',
-      tipo: 'casa',
-      rentaMensual: 650,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    contratoEstado: 'activo',
-    contratoFin: '2024-05-15',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 3,
-    nombre: 'Laura',
-    apellido: 'Sanchez',
-    email: 'laura.sanchez@email.com',
-    telefono: '+52 55 8765 4321',
-    documento: '55667788',
-    avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
-    propiedadId: 3,
-    propiedad: {
-      id: 3,
-      nombre: 'Loft Central',
-      direccion: '123 Av. Reforma',
-      ciudad: 'CDMX',
-      pais: 'Mexico',
-      tipo: 'apartamento',
-      rentaMensual: 1200,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    contratoEstado: 'activo',
-    contratoFin: '2024-06-27',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 4,
-    nombre: 'Martin',
-    apellido: 'Ruiz',
-    email: 'martin.ruiz@email.com',
-    telefono: '+1 787 234 5678',
-    documento: '11223344',
-    avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
-    propiedadId: 4,
-    propiedad: {
-      id: 4,
-      nombre: 'PH Villa Colonial',
-      direccion: 'Ave Austral, Ponce de Let',
-      ciudad: 'Rico',
-      pais: 'Puerto Rico',
-      tipo: 'casa',
-      rentaMensual: 725,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    contratoEstado: 'finalizado',
-    contratoFin: '2024-02-22',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 5,
-    nombre: 'Gabriela',
-    apellido: 'Torres',
-    email: 'gabriela.torres@email.com',
-    telefono: '+55 11 9876 5432',
-    documento: '99887766',
-    avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-    propiedadId: 5,
-    propiedad: {
-      id: 5,
-      nombre: 'Departamento Moderno',
-      direccion: 'Rua Augusta 799',
-      ciudad: 'Sao Paulo',
-      pais: 'Brasil',
-      tipo: 'apartamento',
-      rentaMensual: 650,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    contratoEstado: 'sin_contrato',
-    createdAt: '',
-    updatedAt: '',
-  },
-];
+import {
+  getInquilinos,
+  createInquilino,
+  updateInquilino,
+  deleteInquilino,
+} from '../../services/inquilinosService';
 
 const emptyFormData: InquilinoFormData = {
   nombre: '',
@@ -145,11 +18,52 @@ const emptyFormData: InquilinoFormData = {
 };
 
 export function InquilinosPage() {
-  const [inquilinos, setInquilinos] = useState<Inquilino[]>(mockInquilinos);
+  const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingInquilino, setEditingInquilino] = useState<Inquilino | null>(null);
   const [formData, setFormData] = useState<InquilinoFormData>(emptyFormData);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const pageSize = 10;
+
+  // Debounce search
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(0); // Reset to first page on search
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Fetch inquilinos from API
+  const fetchInquilinos = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getInquilinos(currentPage, pageSize, debouncedSearch || undefined);
+      setInquilinos(response.content);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar inquilinos');
+      setInquilinos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, debouncedSearch]);
+
+  useEffect(() => {
+    fetchInquilinos();
+  }, [fetchInquilinos]);
 
   const handleOpenModal = (inquilino?: Inquilino) => {
     if (inquilino) {
@@ -184,41 +98,48 @@ export function InquilinosPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError(null);
 
-    if (editingInquilino) {
-      // Update existing
-      setInquilinos((prev) =>
-        prev.map((i) =>
-          i.id === editingInquilino.id
-            ? { ...i, ...formData }
-            : i
-        )
-      );
-    } else {
-      // Create new
-      const newInquilino: Inquilino = {
-        id: Date.now(),
-        ...formData,
-        contratoEstado: 'sin_contrato',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setInquilinos((prev) => [...prev, newInquilino]);
+    try {
+      if (editingInquilino) {
+        await updateInquilino(editingInquilino.id, formData);
+      } else {
+        await createInquilino(formData);
+      }
+      handleCloseModal();
+      fetchInquilinos(); // Refresh the list
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar inquilino');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('¿Está seguro de eliminar este inquilino?')) {
+      return;
     }
 
-    handleCloseModal();
+    try {
+      await deleteInquilino(id);
+      fetchInquilinos(); // Refresh the list
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar inquilino');
+    }
   };
 
   const handleContactar = (inquilino: Inquilino) => {
     window.location.href = `mailto:${inquilino.email}`;
   };
 
-  const filteredInquilinos = inquilinos.filter((i) =>
-    `${i.nombre} ${i.apellido}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    i.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handlePageChange = (page: number) => {
+    if (page >= 0 && page < totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   const getContratoEstadoClass = (estado?: string) => {
     switch (estado) {
@@ -239,6 +160,26 @@ export function InquilinosPage() {
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const maxVisiblePages = 4;
+    let startPage = Math.max(0, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages);
+
+    if (endPage - startPage < maxVisiblePages) {
+      startPage = Math.max(0, endPage - maxVisiblePages);
+    }
+
+    for (let i = startPage; i < endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  const startItem = currentPage * pageSize + 1;
+  const endItem = Math.min((currentPage + 1) * pageSize, totalElements);
+
   return (
     <div className="inquilinos-page">
       <div className="page-header">
@@ -247,6 +188,31 @@ export function InquilinosPage() {
           <span>+</span> Agregar inquilino
         </button>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="error-message" style={{
+          backgroundColor: '#fee2e2',
+          color: '#dc2626',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '16px'
+        }}>
+          {error}
+          <button
+            onClick={() => setError(null)}
+            style={{
+              marginLeft: '12px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#dc2626'
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="table-toolbar">
@@ -264,111 +230,172 @@ export function InquilinosPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Inquilino</th>
-              <th>Propiedad</th>
-              <th>Telefono</th>
-              <th>Contrato</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredInquilinos.map((inquilino) => (
-              <tr key={inquilino.id}>
-                <td>
-                  <div className="tenant-cell">
-                    <img
-                      src={inquilino.avatar || '/default-avatar.png'}
-                      alt={inquilino.nombre}
-                      className="tenant-avatar"
-                    />
-                    <div className="tenant-info">
-                      <span className="tenant-name">
-                        {inquilino.nombre} {inquilino.apellido}
-                      </span>
-                      <span className="tenant-subtitle">
-                        {inquilino.propiedad?.nombre || 'Sin propiedad'}
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  {inquilino.propiedad ? (
-                    <div className="property-info-cell">
-                      <span className="property-name-text">{inquilino.propiedad.nombre}</span>
-                      <span className="property-address-text">
-                        {inquilino.propiedad.direccion}, {inquilino.propiedad.ciudad}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="no-property">Sin propiedad</span>
-                  )}
-                </td>
-                <td>
-                  <span className="phone-text">{inquilino.telefono}</span>
-                </td>
-                <td>
-                  {inquilino.contratoEstado === 'sin_contrato' ? (
-                    <span className="no-contract">No contrato</span>
-                  ) : (
-                    <div className="contract-info">
-                      <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
-                        {inquilino.contratoEstado === 'activo' ? 'Active' : 'Finalizado'}
-                      </span>
-                      {inquilino.contratoFin && (
-                        <span className="contract-date">
-                          $) {formatDate(inquilino.contratoFin)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      className="btn btn-outline btn-sm"
-                      onClick={() => handleOpenModal(inquilino)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                      Editar
-                    </button>
-                    <button
-                      className="btn btn-outline btn-sm"
-                      onClick={() => handleContactar(inquilino)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                        <polyline points="22,6 12,13 2,6" />
-                      </svg>
-                      Contactar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="table-pagination">
-        <span className="pagination-info">1-{filteredInquilinos.length} de {filteredInquilinos.length}</span>
-        <div className="pagination-controls">
-          <button className="pagination-btn" disabled>&lt;</button>
-          <button className="pagination-btn active">1</button>
-          <button className="pagination-btn">2</button>
-          <button className="pagination-btn">3</button>
-          <button className="pagination-btn">4</button>
-          <button className="pagination-btn">&gt;</button>
+      {/* Loading state */}
+      {loading ? (
+        <div className="loading-container" style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '60px',
+          color: '#6b7280'
+        }}>
+          <span>Cargando inquilinos...</span>
         </div>
-      </div>
+      ) : inquilinos.length === 0 ? (
+        <div className="empty-state" style={{
+          textAlign: 'center',
+          padding: '60px',
+          color: '#6b7280'
+        }}>
+          <p>{debouncedSearch ? 'No se encontraron inquilinos' : 'No hay inquilinos registrados'}</p>
+          {!debouncedSearch && (
+            <button className="btn btn-primary" onClick={() => handleOpenModal()} style={{ marginTop: '16px' }}>
+              Agregar primer inquilino
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Table */}
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Inquilino</th>
+                  <th>Propiedad</th>
+                  <th>Telefono</th>
+                  <th>Contrato</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inquilinos.map((inquilino) => (
+                  <tr key={inquilino.id}>
+                    <td>
+                      <div className="tenant-cell">
+                        <img
+                          src={inquilino.avatar || '/default-avatar.png'}
+                          alt={inquilino.nombre}
+                          className="tenant-avatar"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/default-avatar.png';
+                          }}
+                        />
+                        <div className="tenant-info">
+                          <span className="tenant-name">
+                            {inquilino.nombre} {inquilino.apellido}
+                          </span>
+                          <span className="tenant-subtitle">
+                            {inquilino.propiedad?.nombre || 'Sin propiedad'}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      {inquilino.propiedad ? (
+                        <div className="property-info-cell">
+                          <span className="property-name-text">{inquilino.propiedad.nombre}</span>
+                          <span className="property-address-text">
+                            {inquilino.propiedad.direccion}, {inquilino.propiedad.ciudad}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="no-property">Sin propiedad</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="phone-text">{inquilino.telefono}</span>
+                    </td>
+                    <td>
+                      {inquilino.contratoEstado === 'sin_contrato' || !inquilino.contratoEstado ? (
+                        <span className="no-contract">No contrato</span>
+                      ) : (
+                        <div className="contract-info">
+                          <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
+                            {inquilino.contratoEstado === 'activo' ? 'Active' : 'Finalizado'}
+                          </span>
+                          {inquilino.contratoFin && (
+                            <span className="contract-date">
+                              $) {formatDate(inquilino.contratoFin)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => handleOpenModal(inquilino)}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                          Editar
+                        </button>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => handleContactar(inquilino)}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                          </svg>
+                          Contactar
+                        </button>
+                        <button
+                          className="btn btn-outline btn-sm btn-danger"
+                          onClick={() => handleDelete(inquilino.id)}
+                          style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3,6 5,6 21,6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="table-pagination">
+            <span className="pagination-info">
+              {totalElements > 0 ? `${startItem}-${endItem} de ${totalElements}` : '0 resultados'}
+            </span>
+            <div className="pagination-controls">
+              <button
+                className="pagination-btn"
+                disabled={currentPage === 0}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                &lt;
+              </button>
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page + 1}
+                </button>
+              ))}
+              <button
+                className="pagination-btn"
+                disabled={currentPage >= totalPages - 1}
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                &gt;
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Modal */}
       {showModal && (
@@ -460,11 +487,11 @@ export function InquilinosPage() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={submitting}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingInquilino ? 'Guardar cambios' : 'Agregar inquilino'}
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Guardando...' : (editingInquilino ? 'Guardar cambios' : 'Agregar inquilino')}
                 </button>
               </div>
             </form>
