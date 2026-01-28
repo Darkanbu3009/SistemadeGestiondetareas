@@ -1,109 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Propiedad, PropiedadFormData } from '../../types';
-
-// Mock data
-const mockPropiedades: Propiedad[] = [
-  {
-    id: 1,
-    nombre: 'Apartment 3A',
-    direccion: 'Av. Las Condes 123',
-    ciudad: 'Santiago',
-    pais: 'Chile',
-    tipo: 'apartamento',
-    rentaMensual: 800,
-    estado: 'ocupada',
-    imagen: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=200&fit=crop',
-    inquilinoId: 1,
-    inquilino: {
-      id: 1,
-      nombre: 'Jose',
-      apellido: 'Perez',
-      email: 'jose@email.com',
-      telefono: '+56 9 1234 5678',
-      documento: '12345678-9',
-      avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 2,
-    nombre: 'Casa en Palermo',
-    direccion: 'Calle Serrano 463',
-    ciudad: 'Buenos Aires',
-    pais: 'Argentina',
-    tipo: 'casa',
-    rentaMensual: 650,
-    estado: 'ocupada',
-    imagen: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=300&h=200&fit=crop',
-    inquilinoId: 2,
-    inquilino: {
-      id: 2,
-      nombre: 'Alejandro',
-      apellido: 'Garcia',
-      email: 'alejandro@email.com',
-      telefono: '+54 11 5678 9012',
-      documento: '98765432',
-      avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 3,
-    nombre: 'Departamento Moderno',
-    direccion: 'Rua Augusta 789',
-    ciudad: 'Sao Paulo',
-    pais: 'Brasil',
-    tipo: 'apartamento',
-    rentaMensual: 650,
-    estado: 'disponible',
-    imagen: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=300&h=200&fit=crop',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 4,
-    nombre: 'PH Villa Colonial',
-    direccion: 'San Juan 723',
-    ciudad: 'Ponce',
-    pais: 'Puerto Rico',
-    tipo: 'casa',
-    rentaMensual: 725,
-    estado: 'disponible',
-    imagen: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=300&h=200&fit=crop',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 5,
-    nombre: 'Loft Central',
-    direccion: '123 Av. Reforma',
-    ciudad: 'CDMX',
-    pais: 'Mexico',
-    tipo: 'apartamento',
-    rentaMensual: 450,
-    estado: 'ocupada',
-    inquilinoId: 3,
-    inquilino: {
-      id: 3,
-      nombre: 'Laura',
-      apellido: 'Sanchez',
-      email: 'laura@email.com',
-      telefono: '+52 55 8765 4321',
-      documento: '55667788',
-      avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    createdAt: '',
-    updatedAt: '',
-  },
-];
+import {
+  getAllPropiedades,
+  createPropiedad,
+  updatePropiedad,
+  deletePropiedad,
+} from '../../services/propiedadService';
 
 const emptyFormData: PropiedadFormData = {
   nombre: '',
@@ -117,11 +19,33 @@ const emptyFormData: PropiedadFormData = {
 };
 
 export function PropiedadesPage() {
-  const [propiedades, setPropiedades] = useState<Propiedad[]>(mockPropiedades);
+  const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingPropiedad, setEditingPropiedad] = useState<Propiedad | null>(null);
   const [formData, setFormData] = useState<PropiedadFormData>(emptyFormData);
   const [searchTerm, setSearchTerm] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Load properties from API
+  const loadPropiedades = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getAllPropiedades();
+      setPropiedades(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar propiedades');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load properties on mount
+  useEffect(() => {
+    loadPropiedades();
+  }, [loadPropiedades]);
 
   const handleOpenModal = (propiedad?: Propiedad) => {
     if (propiedad) {
@@ -157,35 +81,42 @@ export function PropiedadesPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError(null);
 
-    if (editingPropiedad) {
-      // Update existing
-      setPropiedades((prev) =>
-        prev.map((p) =>
-          p.id === editingPropiedad.id
-            ? { ...p, ...formData }
-            : p
-        )
-      );
-    } else {
-      // Create new
-      const newPropiedad: Propiedad = {
-        id: Date.now(),
-        ...formData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setPropiedades((prev) => [...prev, newPropiedad]);
+    try {
+      if (editingPropiedad) {
+        // Update existing
+        const updated = await updatePropiedad(editingPropiedad.id, formData);
+        setPropiedades((prev) =>
+          prev.map((p) => (p.id === editingPropiedad.id ? updated : p))
+        );
+      } else {
+        // Create new
+        const created = await createPropiedad(formData);
+        setPropiedades((prev) => [created, ...prev]);
+      }
+      handleCloseModal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar propiedad');
+    } finally {
+      setSubmitting(false);
     }
-
-    handleCloseModal();
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm('¿Estas seguro de eliminar esta propiedad?')) {
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Estas seguro de eliminar esta propiedad?')) {
+      return;
+    }
+
+    try {
+      setError(null);
+      await deletePropiedad(id);
       setPropiedades((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar propiedad');
     }
   };
 
@@ -215,6 +146,25 @@ export function PropiedadesPage() {
           <span>+</span> Agregar propiedad
         </button>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="error-message" style={{
+          backgroundColor: '#fee2e2',
+          color: '#dc2626',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '16px'
+        }}>
+          {error}
+          <button
+            onClick={() => setError(null)}
+            style={{ marginLeft: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}
+          >
+            X
+          </button>
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="table-toolbar">
@@ -252,104 +202,135 @@ export function PropiedadesPage() {
         </div>
       </div>
 
+      {/* Loading state */}
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '48px' }}>
+          <div className="loading-spinner" style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #e5e7eb',
+            borderTop: '3px solid #3b82f6',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto'
+          }}></div>
+          <p style={{ marginTop: '16px', color: '#6b7280' }}>Cargando propiedades...</p>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && propiedades.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '48px', color: '#6b7280' }}>
+          <p>No hay propiedades registradas</p>
+          <button
+            className="btn btn-primary"
+            onClick={() => handleOpenModal()}
+            style={{ marginTop: '16px' }}
+          >
+            Agregar primera propiedad
+          </button>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Propiedad</th>
-              <th>Direccion</th>
-              <th>Inquilino</th>
-              <th>Renta mensual</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPropiedades.map((propiedad) => (
-              <tr key={propiedad.id}>
-                <td>
-                  <div className="property-cell">
-                    {propiedad.imagen && (
-                      <img
-                        src={propiedad.imagen}
-                        alt={propiedad.nombre}
-                        className="property-thumbnail"
-                      />
-                    )}
-                    <span className="property-name">{propiedad.nombre}</span>
-                  </div>
-                </td>
-                <td>
-                  <span className="address-text">
-                    {propiedad.direccion}, {propiedad.ciudad}, {propiedad.pais}
-                  </span>
-                </td>
-                <td>
-                  {propiedad.inquilino ? (
-                    <div className="tenant-cell-small">
-                      <img
-                        src={propiedad.inquilino.avatar || '/default-avatar.png'}
-                        alt={propiedad.inquilino.nombre}
-                        className="tenant-avatar-small"
-                      />
-                      <span>{propiedad.inquilino.nombre} {propiedad.inquilino.apellido}</span>
-                    </div>
-                  ) : (
-                    <span className="no-tenant">Sin inquilino</span>
-                  )}
-                </td>
-                <td>
-                  <span className="rent-value">${propiedad.rentaMensual.toLocaleString()}</span>
-                </td>
-                <td>
-                  <span className={`badge ${getEstadoClass(propiedad.estado)}`}>
-                    {propiedad.estado === 'disponible' ? 'Disponible' :
-                     propiedad.estado === 'ocupada' ? 'Ocupada' : 'Mantenimiento'}
-                  </span>
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      className="btn btn-icon"
-                      onClick={() => handleOpenModal(propiedad)}
-                      title="Editar"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </button>
-                    <button
-                      className="btn btn-icon btn-danger"
-                      onClick={() => handleDelete(propiedad.id)}
-                      title="Eliminar"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3,6 5,6 21,6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </div>
-                </td>
+      {!loading && propiedades.length > 0 && (
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Propiedad</th>
+                <th>Direccion</th>
+                <th>Inquilino</th>
+                <th>Renta mensual</th>
+                <th>Estado</th>
+                <th>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filteredPropiedades.map((propiedad) => (
+                <tr key={propiedad.id}>
+                  <td>
+                    <div className="property-cell">
+                      {propiedad.imagen && (
+                        <img
+                          src={propiedad.imagen}
+                          alt={propiedad.nombre}
+                          className="property-thumbnail"
+                        />
+                      )}
+                      <span className="property-name">{propiedad.nombre}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="address-text">
+                      {propiedad.direccion}, {propiedad.ciudad}, {propiedad.pais}
+                    </span>
+                  </td>
+                  <td>
+                    {propiedad.inquilino ? (
+                      <div className="tenant-cell-small">
+                        <img
+                          src={propiedad.inquilino.avatar || '/default-avatar.png'}
+                          alt={propiedad.inquilino.nombre}
+                          className="tenant-avatar-small"
+                        />
+                        <span>{propiedad.inquilino.nombre} {propiedad.inquilino.apellido}</span>
+                      </div>
+                    ) : (
+                      <span className="no-tenant">Sin inquilino</span>
+                    )}
+                  </td>
+                  <td>
+                    <span className="rent-value">${propiedad.rentaMensual.toLocaleString()}</span>
+                  </td>
+                  <td>
+                    <span className={`badge ${getEstadoClass(propiedad.estado)}`}>
+                      {propiedad.estado === 'disponible' ? 'Disponible' :
+                       propiedad.estado === 'ocupada' ? 'Ocupada' : 'Mantenimiento'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="action-buttons">
+                      <button
+                        className="btn btn-icon"
+                        onClick={() => handleOpenModal(propiedad)}
+                        title="Editar"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn btn-icon btn-danger"
+                        onClick={() => handleDelete(propiedad.id)}
+                        title="Eliminar"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3,6 5,6 21,6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Pagination */}
-      <div className="table-pagination">
-        <span className="pagination-info">1-{filteredPropiedades.length} de {filteredPropiedades.length}</span>
-        <div className="pagination-controls">
-          <button className="pagination-btn" disabled>&lt;</button>
-          <button className="pagination-btn active">1</button>
-          <button className="pagination-btn">2</button>
-          <button className="pagination-btn">3</button>
-          <button className="pagination-btn">4</button>
-          <button className="pagination-btn">&gt;</button>
+      {!loading && filteredPropiedades.length > 0 && (
+        <div className="table-pagination">
+          <span className="pagination-info">1-{filteredPropiedades.length} de {filteredPropiedades.length}</span>
+          <div className="pagination-controls">
+            <button className="pagination-btn" disabled>&lt;</button>
+            <button className="pagination-btn active">1</button>
+            <button className="pagination-btn">&gt;</button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Modal */}
       {showModal && (
@@ -474,11 +455,11 @@ export function PropiedadesPage() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={submitting}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingPropiedad ? 'Guardar cambios' : 'Agregar propiedad'}
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Guardando...' : editingPropiedad ? 'Guardar cambios' : 'Agregar propiedad'}
                 </button>
               </div>
             </form>
