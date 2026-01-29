@@ -134,6 +134,16 @@ public class Contrato {
         return id;
     }
 
+    // Expose inquilinoId for JSON serialization
+    public Long getInquilinoId() {
+        return inquilino != null ? inquilino.getId() : null;
+    }
+
+    // Expose propiedadId for JSON serialization
+    public Long getPropiedadId() {
+        return propiedad != null ? propiedad.getId() : null;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
