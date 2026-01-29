@@ -64,16 +64,19 @@ export function ContratosPage() {
     setLoading(true);
     setError(null);
     try {
+      console.log('Fetching contratos...');
       const response = await getContratos(
         currentPage,
         pageSize,
         debouncedSearch || undefined,
         filterEstado || undefined
       );
+      console.log('Contratos received:', response);
       setContratos(response.content);
       setTotalPages(response.totalPages);
       setTotalElements(response.totalElements);
     } catch (err) {
+      console.error('Error fetching contratos:', err);
       setError(err instanceof Error ? err.message : 'Error al cargar contratos');
     } finally {
       setLoading(false);
@@ -98,14 +101,18 @@ export function ContratosPage() {
   // Fetch inquilinos and propiedades for dropdowns
   const fetchDropdownData = useCallback(async () => {
     try {
+      console.log('Fetching inquilinos and propiedades for dropdowns...');
       const [inquilinosData, propiedadesData] = await Promise.all([
         getAllInquilinos(),
         getAllPropiedades(),
       ]);
+      console.log('Inquilinos loaded:', inquilinosData);
+      console.log('Propiedades loaded:', propiedadesData);
       setInquilinos(inquilinosData);
       setPropiedades(propiedadesData);
     } catch (err) {
       console.error('Error fetching dropdown data:', err);
+      setError('Error al cargar inquilinos y propiedades. Verifique que haya registrado al menos un inquilino y una propiedad.');
     }
   }, []);
 
@@ -156,7 +163,34 @@ export function ContratosPage() {
     e.preventDefault();
     setError(null);
 
+    // Validate required fields
+    if (!formData.inquilinoId || formData.inquilinoId === 0) {
+      setError('Por favor selecciona un inquilino');
+      return;
+    }
+
+    if (!formData.propiedadId || formData.propiedadId === 0) {
+      setError('Por favor selecciona una propiedad');
+      return;
+    }
+
+    if (!formData.fechaInicio) {
+      setError('Por favor ingresa la fecha de inicio');
+      return;
+    }
+
+    if (!formData.fechaFin) {
+      setError('Por favor ingresa la fecha de fin');
+      return;
+    }
+
+    if (!formData.rentaMensual || formData.rentaMensual <= 0) {
+      setError('Por favor ingresa una renta mensual valida');
+      return;
+    }
+
     try {
+      console.log('Submitting contrato data:', formData);
       if (editingContrato) {
         await updateContrato(editingContrato.id, formData);
       } else {
@@ -166,6 +200,7 @@ export function ContratosPage() {
       fetchContratos();
       fetchStats();
     } catch (err) {
+      console.error('Error saving contrato:', err);
       setError(err instanceof Error ? err.message : 'Error al guardar contrato');
     }
   };
@@ -547,6 +582,25 @@ export function ContratosPage() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
+                {/* Error Message in Modal */}
+                {error && (
+                  <div className="alert alert-error" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '8px', fontSize: '0.875rem' }}>
+                    {error}
+                  </div>
+                )}
+
+                {/* Info message if no inquilinos or propiedades */}
+                {inquilinos.length === 0 && (
+                  <div className="alert alert-warning" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.875rem' }}>
+                    No hay inquilinos registrados. Por favor, registre al menos un inquilino primero.
+                  </div>
+                )}
+                {propiedades.length === 0 && (
+                  <div className="alert alert-warning" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.875rem' }}>
+                    No hay propiedades registradas. Por favor, registre al menos una propiedad primero.
+                  </div>
+                )}
+
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="inquilinoId">Inquilino</label>
