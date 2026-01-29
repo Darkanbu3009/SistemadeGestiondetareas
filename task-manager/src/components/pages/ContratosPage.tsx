@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Contrato, ContratoFormData, Inquilino, Propiedad } from '../../types';
 import {
   getContratos,
@@ -10,6 +10,7 @@ import {
 } from '../../services/contratosService';
 import { getAllInquilinos } from '../../services/inquilinosService';
 import { getAllPropiedades } from '../../services/propiedadService';
+import { uploadFile } from '../../lib/supabase';
 
 interface ContratoStats {
   activos: number;
@@ -48,6 +49,12 @@ export function ContratosPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
   const pageSize = 10;
+
+  // File upload states
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch stats from backend
   const fetchStats = useCallback(async () => {
@@ -128,6 +135,61 @@ export function ContratosPage() {
     setShowModal(false);
     setEditingContrato(null);
     setFormData(emptyFormData);
+    setSelectedFile(null);
+    setFormErrors({});
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        setFormErrors((prev) => ({ ...prev, pdf: 'Solo se permiten archivos PDF' }));
+        setSelectedFile(null);
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        setFormErrors((prev) => ({ ...prev, pdf: 'El archivo no debe exceder 10MB' }));
+        setSelectedFile(null);
+        return;
+      }
+      setFormErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.pdf;
+        return newErrors;
+      });
+      setSelectedFile(file);
+    }
+  };
+
+  // Validate form data
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.inquilinoId || formData.inquilinoId <= 0) {
+      errors.inquilinoId = 'Debe seleccionar un inquilino';
+    }
+    if (!formData.propiedadId || formData.propiedadId <= 0) {
+      errors.propiedadId = 'Debe seleccionar una propiedad';
+    }
+    if (!formData.fechaInicio) {
+      errors.fechaInicio = 'La fecha de inicio es requerida';
+    }
+    if (!formData.fechaFin) {
+      errors.fechaFin = 'La fecha de fin es requerida';
+    }
+    if (formData.fechaInicio && formData.fechaFin && formData.fechaInicio >= formData.fechaFin) {
+      errors.fechaFin = 'La fecha de fin debe ser posterior a la fecha de inicio';
+    }
+    if (!formData.rentaMensual || formData.rentaMensual <= 0) {
+      errors.rentaMensual = 'La renta mensual debe ser mayor a 0';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -143,17 +205,42 @@ export function ContratosPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
+
     try {
+      setUploading(true);
+      let submitData = { ...formData };
+
+      // Upload file if selected
+      if (selectedFile) {
+        try {
+          const pdfUrl = await uploadFile(selectedFile, 'contratos', 'pdfs');
+          submitData = { ...submitData, pdfUrl };
+        } catch (uploadErr) {
+          console.error('Error uploading PDF:', uploadErr);
+          // Continue without PDF if upload fails, but show warning
+          setError('Advertencia: No se pudo subir el PDF, pero el contrato se guardara sin documento.');
+        }
+      }
+
       if (editingContrato) {
-        await updateContrato(editingContrato.id, formData);
+        await updateContrato(editingContrato.id, submitData);
       } else {
-        await createContrato(formData);
+        await createContrato(submitData);
       }
       handleCloseModal();
       fetchContratos();
       fetchStats();
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar contrato');
+      const errorMessage = err instanceof Error ? err.message : 'Error al guardar contrato';
+      console.error('Error saving contract:', err);
+      setError(errorMessage);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -562,13 +649,13 @@ export function ContratosPage() {
               <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="inquilinoId">Inquilino</label>
+                    <label htmlFor="inquilinoId">Inquilino <span className="required">*</span></label>
                     <select
                       id="inquilinoId"
                       name="inquilinoId"
-                      value={formData.inquilinoId}
+                      value={formData.inquilinoId || ''}
                       onChange={handleInputChange}
-                      required
+                      className={formErrors.inquilinoId ? 'input-error' : ''}
                     >
                       <option value="">Seleccionar inquilino</option>
                       {inquilinos.map((inquilino) => (
@@ -577,15 +664,18 @@ export function ContratosPage() {
                         </option>
                       ))}
                     </select>
+                    {formErrors.inquilinoId && (
+                      <span className="error-text">{formErrors.inquilinoId}</span>
+                    )}
                   </div>
                   <div className="form-group">
-                    <label htmlFor="propiedadId">Propiedad</label>
+                    <label htmlFor="propiedadId">Propiedad <span className="required">*</span></label>
                     <select
                       id="propiedadId"
                       name="propiedadId"
-                      value={formData.propiedadId}
+                      value={formData.propiedadId || ''}
                       onChange={handleInputChange}
-                      required
+                      className={formErrors.propiedadId ? 'input-error' : ''}
                     >
                       <option value="">Seleccionar propiedad</option>
                       {propiedades.map((propiedad) => (
@@ -594,36 +684,45 @@ export function ContratosPage() {
                         </option>
                       ))}
                     </select>
+                    {formErrors.propiedadId && (
+                      <span className="error-text">{formErrors.propiedadId}</span>
+                    )}
                   </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="fechaInicio">Fecha de inicio</label>
+                    <label htmlFor="fechaInicio">Fecha de inicio <span className="required">*</span></label>
                     <input
                       type="date"
                       id="fechaInicio"
                       name="fechaInicio"
                       value={formData.fechaInicio}
                       onChange={handleInputChange}
-                      required
+                      className={formErrors.fechaInicio ? 'input-error' : ''}
                     />
+                    {formErrors.fechaInicio && (
+                      <span className="error-text">{formErrors.fechaInicio}</span>
+                    )}
                   </div>
                   <div className="form-group">
-                    <label htmlFor="fechaFin">Fecha de fin</label>
+                    <label htmlFor="fechaFin">Fecha de fin <span className="required">*</span></label>
                     <input
                       type="date"
                       id="fechaFin"
                       name="fechaFin"
                       value={formData.fechaFin}
                       onChange={handleInputChange}
-                      required
+                      className={formErrors.fechaFin ? 'input-error' : ''}
                     />
+                    {formErrors.fechaFin && (
+                      <span className="error-text">{formErrors.fechaFin}</span>
+                    )}
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="rentaMensual">Renta mensual ($)</label>
+                  <label htmlFor="rentaMensual">Renta mensual ($) <span className="required">*</span></label>
                   <input
                     type="number"
                     id="rentaMensual"
@@ -632,8 +731,11 @@ export function ContratosPage() {
                     onChange={handleInputChange}
                     min="0"
                     step="0.01"
-                    required
+                    className={formErrors.rentaMensual ? 'input-error' : ''}
                   />
+                  {formErrors.rentaMensual && (
+                    <span className="error-text">{formErrors.rentaMensual}</span>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -643,15 +745,41 @@ export function ContratosPage() {
                     id="pdfUpload"
                     name="pdfUpload"
                     accept=".pdf"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className={formErrors.pdf ? 'input-error' : ''}
+                  />
+                  {selectedFile && (
+                    <span className="file-selected">Archivo seleccionado: {selectedFile.name}</span>
+                  )}
+                  {formErrors.pdf && (
+                    <span className="error-text">{formErrors.pdf}</span>
+                  )}
+                  {editingContrato?.pdfUrl && !selectedFile && (
+                    <span className="file-existing">
+                      PDF actual: <a href={editingContrato.pdfUrl} target="_blank" rel="noopener noreferrer">Ver documento</a>
+                    </span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="pdfUrl">O ingrese URL del PDF</label>
+                  <input
+                    type="url"
+                    id="pdfUrl"
+                    name="pdfUrl"
+                    value={formData.pdfUrl || ''}
+                    onChange={handleInputChange}
+                    placeholder="https://ejemplo.com/documento.pdf"
                   />
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={uploading}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingContrato ? 'Guardar cambios' : 'Anadir contrato'}
+                <button type="submit" className="btn btn-primary" disabled={uploading}>
+                  {uploading ? 'Guardando...' : (editingContrato ? 'Guardar cambios' : 'Anadir contrato')}
                 </button>
               </div>
             </form>
