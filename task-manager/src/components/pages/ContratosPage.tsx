@@ -1,213 +1,15 @@
-import { useState } from 'react';
-import type { Contrato, ContratoFormData } from '../../types';
-
-// Mock data
-const mockContratos: Contrato[] = [
-  {
-    id: 1,
-    inquilinoId: 1,
-    inquilino: {
-      id: 1,
-      nombre: 'Jose',
-      apellido: 'Perez',
-      email: 'jose@email.com',
-      telefono: '+56 9 1234 5678',
-      documento: '12345678-9',
-      avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    propiedadId: 1,
-    propiedad: {
-      id: 1,
-      nombre: 'Apartment 3A',
-      direccion: 'Av. Las Condes 123',
-      ciudad: 'Santiago',
-      pais: 'Chile',
-      tipo: 'apartamento',
-      rentaMensual: 4150,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    fechaInicio: '2024-11-26',
-    fechaFin: '2024-11-29',
-    rentaMensual: 4150,
-    estado: 'activo',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 2,
-    inquilinoId: 4,
-    inquilino: {
-      id: 4,
-      nombre: 'Martin',
-      apellido: 'Ruiz',
-      email: 'martin@email.com',
-      telefono: '+1 787 234 5678',
-      documento: '11223344',
-      avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    propiedadId: 4,
-    propiedad: {
-      id: 4,
-      nombre: 'PH Villa Colonial',
-      direccion: 'Av. Porlex ve 13dn 223, Ser, Jern',
-      ciudad: 'FR',
-      pais: 'Puerto Rico',
-      tipo: 'casa',
-      rentaMensual: 3350,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    fechaInicio: '2024-08-13',
-    fechaFin: '2025-08-13',
-    rentaMensual: 3350,
-    estado: 'por_vencer',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 3,
-    inquilinoId: 2,
-    inquilino: {
-      id: 2,
-      nombre: 'Alejandro',
-      apellido: 'Garcia',
-      email: 'alejandro@email.com',
-      telefono: '+54 11 5678 9012',
-      documento: '98765432',
-      avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    propiedadId: 2,
-    propiedad: {
-      id: 2,
-      nombre: 'Loft Central',
-      direccion: 'Avensas Nefonmo 123',
-      ciudad: 'Buenos Aires',
-      pais: 'Argentina',
-      tipo: 'apartamento',
-      rentaMensual: 1200,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    fechaInicio: '2024-05-20',
-    fechaFin: '2024-04-20',
-    rentaMensual: 1200,
-    estado: 'activo',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 4,
-    inquilinoId: 3,
-    inquilino: {
-      id: 3,
-      nombre: 'Laura',
-      apellido: 'Sanchez',
-      email: 'laura@email.com',
-      telefono: '+52 55 8765 4321',
-      documento: '55667788',
-      avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    propiedadId: 3,
-    propiedad: {
-      id: 3,
-      nombre: 'Loft Central',
-      direccion: 'Asenada 193, COML',
-      ciudad: 'Medico',
-      pais: 'Mexico',
-      tipo: 'apartamento',
-      rentaMensual: 650,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    fechaInicio: '2024-05-29',
-    fechaFin: '2024-04-10',
-    rentaMensual: 650,
-    estado: 'activo',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 5,
-    inquilinoId: 5,
-    inquilino: {
-      id: 5,
-      nombre: 'Gabriela',
-      apellido: 'Torres',
-      email: 'gabriela@email.com',
-      telefono: '+55 11 9876 5432',
-      documento: '99887766',
-      avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    propiedadId: 5,
-    propiedad: {
-      id: 5,
-      nombre: 'Departamento Moderno',
-      direccion: 'Rda Augustn, 795, Sorfoats',
-      ciudad: 'Ssaal',
-      pais: 'Brasil',
-      tipo: 'apartamento',
-      rentaMensual: 950,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    fechaInicio: '2023-03-23',
-    fechaFin: '2024-03-22',
-    rentaMensual: 950,
-    estado: 'finalizado',
-    createdAt: '',
-    updatedAt: '',
-  },
-  {
-    id: 6,
-    inquilinoId: 6,
-    inquilino: {
-      id: 6,
-      nombre: 'Joan',
-      apellido: 'Riez',
-      email: 'joan@email.com',
-      telefono: '+56 9 8765 4321',
-      documento: '77889900',
-      avatar: 'https://randomuser.me/api/portraits/men/4.jpg',
-      createdAt: '',
-      updatedAt: '',
-    },
-    propiedadId: 6,
-    propiedad: {
-      id: 6,
-      nombre: 'Condominio La Paz',
-      direccion: 'Cato Andes 126',
-      ciudad: 'Santiago',
-      pais: 'Chile',
-      tipo: 'apartamento',
-      rentaMensual: 950,
-      estado: 'ocupada',
-      createdAt: '',
-      updatedAt: '',
-    },
-    fechaInicio: '2024-05-23',
-    fechaFin: '2024-05-13',
-    rentaMensual: 950,
-    estado: 'finalizado',
-    createdAt: '',
-    updatedAt: '',
-  },
-];
+import { useState, useEffect, useCallback } from 'react';
+import type { Contrato, ContratoFormData, Inquilino, Propiedad } from '../../types';
+import {
+  getContratos,
+  createContrato,
+  updateContrato,
+  deleteContrato,
+  getContratosCountByEstado,
+  firmarContrato,
+} from '../../services/contratosService';
+import { getAllInquilinos } from '../../services/inquilinosService';
+import { getAllPropiedades } from '../../services/propiedadService';
 
 interface ContratoStats {
   activos: number;
@@ -226,19 +28,83 @@ const emptyFormData: ContratoFormData = {
 };
 
 export function ContratosPage() {
-  const [contratos, setContratos] = useState<Contrato[]>(mockContratos);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
+  const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingContrato, setEditingContrato] = useState<Contrato | null>(null);
   const [formData, setFormData] = useState<ContratoFormData>(emptyFormData);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('');
+  const [stats, setStats] = useState<ContratoStats>({
+    activos: 0,
+    porVencer: 0,
+    finalizados: 0,
+    sinFirmar: 0,
+  });
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const pageSize = 10;
 
-  const stats: ContratoStats = {
-    activos: contratos.filter((c) => c.estado === 'activo').length,
-    porVencer: contratos.filter((c) => c.estado === 'por_vencer').length,
-    finalizados: contratos.filter((c) => c.estado === 'finalizado').length,
-    sinFirmar: contratos.filter((c) => c.estado === 'sin_firmar').length,
-  };
+  // Fetch stats from backend
+  const fetchStats = useCallback(async () => {
+    try {
+      const [activos, porVencer, finalizados, sinFirmar] = await Promise.all([
+        getContratosCountByEstado('activo'),
+        getContratosCountByEstado('por_vencer'),
+        getContratosCountByEstado('finalizado'),
+        getContratosCountByEstado('sin_firmar'),
+      ]);
+      setStats({ activos, porVencer, finalizados, sinFirmar });
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
+  }, []);
+
+  // Fetch contratos from backend
+  const fetchContratos = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getContratos(
+        currentPage,
+        pageSize,
+        searchTerm || undefined,
+        filterEstado || undefined
+      );
+      setContratos(response.content);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar contratos');
+      console.error('Error fetching contratos:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, searchTerm, filterEstado]);
+
+  // Fetch inquilinos and propiedades for the form dropdowns
+  const fetchDropdownData = useCallback(async () => {
+    try {
+      const [inquilinosData, propiedadesData] = await Promise.all([
+        getAllInquilinos(),
+        getAllPropiedades(),
+      ]);
+      setInquilinos(inquilinosData);
+      setPropiedades(propiedadesData);
+    } catch (err) {
+      console.error('Error fetching dropdown data:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchContratos();
+    fetchStats();
+    fetchDropdownData();
+  }, [fetchContratos, fetchStats, fetchDropdownData]);
 
   const handleOpenModal = (contrato?: Contrato) => {
     if (contrato) {
@@ -274,60 +140,76 @@ export function ContratosPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (editingContrato) {
-      // Update existing
-      setContratos((prev) =>
-        prev.map((c) =>
-          c.id === editingContrato.id
-            ? { ...c, ...formData, updatedAt: new Date().toISOString() }
-            : c
-        )
-      );
-    } else {
-      // Create new
-      const newContrato: Contrato = {
-        id: Date.now(),
-        ...formData,
-        estado: 'activo',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setContratos((prev) => [...prev, newContrato]);
+    try {
+      if (editingContrato) {
+        await updateContrato(editingContrato.id, formData);
+      } else {
+        await createContrato(formData);
+      }
+      handleCloseModal();
+      fetchContratos();
+      fetchStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar contrato');
     }
-
-    handleCloseModal();
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm('¿Estas seguro de eliminar este contrato?')) {
-      setContratos((prev) => prev.filter((c) => c.id !== id));
+      try {
+        await deleteContrato(id);
+        fetchContratos();
+        fetchStats();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al eliminar contrato');
+      }
     }
   };
 
-  const handleUploadPdf = (contratoId: number) => {
-    // In production, this would open a file picker and upload to server
+  const handleFirmar = async (id: number) => {
+    try {
+      await firmarContrato(id);
+      fetchContratos();
+      fetchStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al firmar contrato');
+    }
+  };
+
+  const handleUploadPdf = async (contratoId: number) => {
     const pdfUrl = prompt('Ingrese la URL del PDF:');
     if (pdfUrl) {
-      setContratos((prev) =>
-        prev.map((c) =>
-          c.id === contratoId
-            ? { ...c, pdfUrl, updatedAt: new Date().toISOString() }
-            : c
-        )
-      );
+      try {
+        const contrato = contratos.find((c) => c.id === contratoId);
+        if (contrato) {
+          await updateContrato(contratoId, {
+            inquilinoId: contrato.inquilinoId,
+            propiedadId: contrato.propiedadId,
+            fechaInicio: contrato.fechaInicio,
+            fechaFin: contrato.fechaFin,
+            rentaMensual: contrato.rentaMensual,
+            pdfUrl,
+          });
+          fetchContratos();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al guardar PDF');
+      }
     }
   };
 
-  const filteredContratos = contratos.filter((c) => {
-    const matchesSearch =
-      `${c.inquilino?.nombre} ${c.inquilino?.apellido}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.propiedad?.nombre.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = !filterEstado || c.estado === filterEstado;
-    return matchesSearch && matchesFilter;
-  });
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(0);
+  };
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilterEstado(e.target.value);
+    setCurrentPage(0);
+  };
 
   const getEstadoClass = (estado: string) => {
     switch (estado) {
@@ -365,6 +247,39 @@ export function ContratosPage() {
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  const renderPagination = () => {
+    const pages = [];
+    const maxVisiblePages = 4;
+    let startPage = Math.max(0, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages);
+
+    if (endPage - startPage < maxVisiblePages) {
+      startPage = Math.max(0, endPage - maxVisiblePages);
+    }
+
+    for (let i = startPage; i < endPage; i++) {
+      pages.push(
+        <button
+          key={i}
+          className={`pagination-btn ${i === currentPage ? 'active' : ''}`}
+          onClick={() => setCurrentPage(i)}
+        >
+          {i + 1}
+        </button>
+      );
+    }
+
+    return pages;
+  };
+
+  if (loading && contratos.length === 0) {
+    return (
+      <div className="contratos-page">
+        <div className="loading-state">Cargando contratos...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="contratos-page">
       <div className="page-header">
@@ -373,6 +288,13 @@ export function ContratosPage() {
           <span>+</span> Anadir contrato
         </button>
       </div>
+
+      {error && (
+        <div className="error-banner">
+          {error}
+          <button onClick={() => setError(null)}>×</button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="stats-grid stats-4">
@@ -440,7 +362,7 @@ export function ContratosPage() {
           <select
             className="filter-select"
             value={filterEstado}
-            onChange={(e) => setFilterEstado(e.target.value)}
+            onChange={handleFilterChange}
           >
             <option value="">Todos</option>
             <option value="activo">Activo</option>
@@ -457,7 +379,7 @@ export function ContratosPage() {
               type="text"
               placeholder="Buscar contrato..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearch}
             />
           </div>
         </div>
@@ -499,100 +421,127 @@ export function ContratosPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredContratos.map((contrato) => (
-              <tr key={contrato.id}>
-                <td>
-                  <div className="tenant-cell">
-                    <img
-                      src={contrato.inquilino?.avatar || '/default-avatar.png'}
-                      alt={contrato.inquilino?.nombre}
-                      className="tenant-avatar"
-                    />
-                    <div className="tenant-info">
-                      <span className="tenant-name">
-                        {contrato.inquilino?.nombre} {contrato.inquilino?.apellido}
-                      </span>
-                      <span className="tenant-subtitle">
-                        {contrato.inquilino?.nombre} {contrato.inquilino?.apellido}
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div className="property-info-cell">
-                    <span className="property-name-text">{contrato.propiedad?.nombre}</span>
-                    <span className="property-address-text">
-                      {contrato.propiedad?.direccion}
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <span className="date-text">{formatDate(contrato.fechaInicio)}</span>
-                </td>
-                <td>
-                  <span className="date-text">{formatDate(contrato.fechaFin)}</span>
-                </td>
-                <td>
-                  <span className="rent-value">${contrato.rentaMensual.toLocaleString()}</span>
-                </td>
-                <td>
-                  <span className={`badge ${getEstadoClass(contrato.estado)}`}>
-                    {getEstadoLabel(contrato.estado)}
-                  </span>
-                </td>
-                <td>
-                  <div className="document-actions">
-                    {contrato.pdfUrl ? (
-                      <a
-                        href={contrato.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-outline btn-sm"
-                      >
-                        Ver PDF
-                      </a>
-                    ) : (
-                      <button
-                        className="btn btn-outline btn-sm"
-                        onClick={() => handleUploadPdf(contrato.id)}
-                      >
-                        + Anadir PDF
-                      </button>
-                    )}
-                  </div>
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      className="btn btn-outline btn-sm"
-                      onClick={() => handleOpenModal(contrato)}
-                    >
-                      Ver
-                    </button>
-                    <button
-                      className="btn btn-outline btn-sm btn-danger-text"
-                      onClick={() => handleDelete(contrato.id)}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
+            {contratos.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="empty-state">
+                  No hay contratos registrados
                 </td>
               </tr>
-            ))}
+            ) : (
+              contratos.map((contrato) => (
+                <tr key={contrato.id}>
+                  <td>
+                    <div className="tenant-cell">
+                      <img
+                        src={contrato.inquilino?.avatar || '/default-avatar.png'}
+                        alt={contrato.inquilino?.nombre}
+                        className="tenant-avatar"
+                      />
+                      <div className="tenant-info">
+                        <span className="tenant-name">
+                          {contrato.inquilino?.nombre} {contrato.inquilino?.apellido}
+                        </span>
+                        <span className="tenant-subtitle">
+                          {contrato.inquilino?.email}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="property-info-cell">
+                      <span className="property-name-text">{contrato.propiedad?.nombre}</span>
+                      <span className="property-address-text">
+                        {contrato.propiedad?.direccion}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="date-text">{formatDate(contrato.fechaInicio)}</span>
+                  </td>
+                  <td>
+                    <span className="date-text">{formatDate(contrato.fechaFin)}</span>
+                  </td>
+                  <td>
+                    <span className="rent-value">${contrato.rentaMensual.toLocaleString()}</span>
+                  </td>
+                  <td>
+                    <span className={`badge ${getEstadoClass(contrato.estado)}`}>
+                      {getEstadoLabel(contrato.estado)}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="document-actions">
+                      {contrato.pdfUrl ? (
+                        <a
+                          href={contrato.pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-outline btn-sm"
+                        >
+                          Ver PDF
+                        </a>
+                      ) : (
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => handleUploadPdf(contrato.id)}
+                        >
+                          + Anadir PDF
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="action-buttons">
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleOpenModal(contrato)}
+                      >
+                        Ver
+                      </button>
+                      {contrato.estado === 'sin_firmar' && (
+                        <button
+                          className="btn btn-outline btn-sm btn-success-text"
+                          onClick={() => handleFirmar(contrato.id)}
+                        >
+                          Firmar
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-outline btn-sm btn-danger-text"
+                        onClick={() => handleDelete(contrato.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Pagination */}
       <div className="table-pagination">
-        <span className="pagination-info">1-{filteredContratos.length} de 13</span>
+        <span className="pagination-info">
+          {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, totalElements)} de {totalElements}
+        </span>
         <div className="pagination-controls">
-          <button className="pagination-btn" disabled>&lt;</button>
-          <button className="pagination-btn active">1</button>
-          <button className="pagination-btn">2</button>
-          <button className="pagination-btn">3</button>
-          <button className="pagination-btn">4</button>
-          <button className="pagination-btn">&gt;</button>
+          <button
+            className="pagination-btn"
+            disabled={currentPage === 0}
+            onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
+          >
+            &lt;
+          </button>
+          {renderPagination()}
+          <button
+            className="pagination-btn"
+            disabled={currentPage >= totalPages - 1}
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
+          >
+            &gt;
+          </button>
         </div>
       </div>
 
@@ -622,9 +571,9 @@ export function ContratosPage() {
                       required
                     >
                       <option value="">Seleccionar inquilino</option>
-                      {mockContratos.map((c) => (
-                        <option key={c.inquilinoId} value={c.inquilinoId}>
-                          {c.inquilino?.nombre} {c.inquilino?.apellido}
+                      {inquilinos.map((inquilino) => (
+                        <option key={inquilino.id} value={inquilino.id}>
+                          {inquilino.nombre} {inquilino.apellido}
                         </option>
                       ))}
                     </select>
@@ -639,9 +588,9 @@ export function ContratosPage() {
                       required
                     >
                       <option value="">Seleccionar propiedad</option>
-                      {mockContratos.map((c) => (
-                        <option key={c.propiedadId} value={c.propiedadId}>
-                          {c.propiedad?.nombre}
+                      {propiedades.map((propiedad) => (
+                        <option key={propiedad.id} value={propiedad.id}>
+                          {propiedad.nombre}
                         </option>
                       ))}
                     </select>
