@@ -40,12 +40,25 @@ export const getContratos = async (
     params.append('estado', estado);
   }
 
-  const response = await fetch(`${API_URL}/contratos?${params}`, {
+  const url = `${API_URL}/contratos?${params}`;
+  console.log('Fetching contratos from:', url);
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
 
-  return handleResponse(response);
+  console.log('Get contratos response status:', response.status);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Error de conexion' }));
+    console.error('Get contratos error:', errorData);
+    throw new Error(errorData.message || `Error: ${response.status}`);
+  }
+
+  const result = await response.json();
+  console.log('Contratos result:', result);
+  return result;
 };
 
 // Get all contratos (no pagination)
@@ -70,13 +83,27 @@ export const getContratoById = async (id: number): Promise<Contrato> => {
 
 // Create a new contrato
 export const createContrato = async (data: ContratoFormData): Promise<Contrato> => {
+  console.log('Creating contrato with data:', data);
+  console.log('API URL:', `${API_URL}/contratos`);
+  console.log('Auth headers:', getAuthHeaders());
+
   const response = await fetch(`${API_URL}/contratos`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
 
-  return handleResponse(response);
+  console.log('Create contrato response status:', response.status);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Error de conexion' }));
+    console.error('Create contrato error:', errorData);
+    throw new Error(errorData.message || `Error: ${response.status}`);
+  }
+
+  const result = await response.json();
+  console.log('Created contrato:', result);
+  return result;
 };
 
 // Update an existing contrato
