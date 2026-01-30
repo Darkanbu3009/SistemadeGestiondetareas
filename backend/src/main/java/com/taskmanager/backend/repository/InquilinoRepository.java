@@ -27,6 +27,8 @@ public interface InquilinoRepository extends JpaRepository<Inquilino, Long> {
 
     List<Inquilino> findByUserAndContratoEstado(User user, String contratoEstado);
 
+    List<Inquilino> findByPropiedadId(Long propiedadId);
+
     @Query("SELECT COUNT(i) FROM Inquilino i WHERE i.user = :user")
     Long countByUser(@Param("user") User user);
 
