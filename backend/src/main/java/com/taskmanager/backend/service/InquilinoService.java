@@ -3,7 +3,9 @@ package com.taskmanager.backend.service;
 import com.taskmanager.backend.model.Inquilino;
 import com.taskmanager.backend.model.Propiedad;
 import com.taskmanager.backend.model.User;
+import com.taskmanager.backend.repository.ContratoRepository;
 import com.taskmanager.backend.repository.InquilinoRepository;
+import com.taskmanager.backend.repository.PagoRepository;
 import com.taskmanager.backend.repository.PropiedadRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,10 +20,17 @@ public class InquilinoService {
 
     private final InquilinoRepository repository;
     private final PropiedadRepository propiedadRepository;
+    private final ContratoRepository contratoRepository;
+    private final PagoRepository pagoRepository;
 
-    public InquilinoService(InquilinoRepository repository, PropiedadRepository propiedadRepository) {
+    public InquilinoService(InquilinoRepository repository, 
+                           PropiedadRepository propiedadRepository,
+                           ContratoRepository contratoRepository,
+                           PagoRepository pagoRepository) {
         this.repository = repository;
         this.propiedadRepository = propiedadRepository;
+        this.contratoRepository = contratoRepository;
+        this.pagoRepository = pagoRepository;
     }
 
     public List<Inquilino> getAllByUser(User user) {
@@ -89,9 +98,9 @@ public class InquilinoService {
             }
             inquilino.setDocumento(inquilinoDetails.getDocumento());
         }
-        if (inquilinoDetails.getAvatar() != null) {
-            inquilino.setAvatar(inquilinoDetails.getAvatar());
-        }
+        // Always update avatar (even if null or empty to allow clearing it)
+        inquilino.setAvatar(inquilinoDetails.getAvatar());
+        
         if (inquilinoDetails.getContratoEstado() != null) {
             inquilino.setContratoEstado(inquilinoDetails.getContratoEstado());
         }
@@ -99,21 +108,29 @@ public class InquilinoService {
             inquilino.setContratoFin(inquilinoDetails.getContratoFin());
         }
 
-        // Update property assignment if changed
-        if (propiedadId != null) {
+        // Handle property assignment changes
+        Long currentPropiedadId = inquilino.getPropiedad() != null ? inquilino.getPropiedad().getId() : null;
+        
+        // If propiedadId changed
+        if ((propiedadId == null && currentPropiedadId != null) || 
+            (propiedadId != null && !propiedadId.equals(currentPropiedadId))) {
+            
             // Free up old property if exists
-            if (inquilino.getPropiedad() != null && !inquilino.getPropiedad().getId().equals(propiedadId)) {
+            if (inquilino.getPropiedad() != null) {
                 Propiedad oldPropiedad = inquilino.getPropiedad();
                 oldPropiedad.setEstado("disponible");
                 propiedadRepository.save(oldPropiedad);
+                inquilino.setPropiedad(null);
             }
 
-            // Assign new property
-            Propiedad newPropiedad = propiedadRepository.findByIdAndUser(propiedadId, user)
-                    .orElseThrow(() -> new RuntimeException("Propiedad no encontrada con id: " + propiedadId));
-            inquilino.setPropiedad(newPropiedad);
-            newPropiedad.setEstado("ocupada");
-            propiedadRepository.save(newPropiedad);
+            // Assign new property if provided
+            if (propiedadId != null) {
+                Propiedad newPropiedad = propiedadRepository.findByIdAndUser(propiedadId, user)
+                        .orElseThrow(() -> new RuntimeException("Propiedad no encontrada con id: " + propiedadId));
+                inquilino.setPropiedad(newPropiedad);
+                newPropiedad.setEstado("ocupada");
+                propiedadRepository.save(newPropiedad);
+            }
         }
 
         return repository.save(inquilino);
@@ -121,6 +138,16 @@ public class InquilinoService {
 
     public void delete(Long id, User user) {
         Inquilino inquilino = getById(id, user);
+
+        // Delete associated payments first
+        if (pagoRepository != null) {
+            pagoRepository.deleteByInquilinoId(id);
+        }
+
+        // Delete associated contracts first
+        if (contratoRepository != null) {
+            contratoRepository.deleteByInquilinoId(id);
+        }
 
         // Free up property if assigned
         if (inquilino.getPropiedad() != null) {
