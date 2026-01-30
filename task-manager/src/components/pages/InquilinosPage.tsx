@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Inquilino, InquilinoFormData } from '../../types';
+import type { Inquilino, InquilinoFormData, Propiedad } from '../../types';
 import {
   getInquilinos,
   createInquilino,
   updateInquilino,
   deleteInquilino,
 } from '../../services/inquilinosService';
+import { getPropiedadesDisponibles, getAllPropiedades } from '../../services/propiedadService';
 
 const emptyFormData: InquilinoFormData = {
   nombre: '',
@@ -19,6 +20,7 @@ const emptyFormData: InquilinoFormData = {
 
 export function InquilinosPage() {
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
+  const [propiedadesDisponibles, setPropiedadesDisponibles] = useState<Propiedad[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingInquilino, setEditingInquilino] = useState<Inquilino | null>(null);
   const [formData, setFormData] = useState<InquilinoFormData>(emptyFormData);
@@ -65,6 +67,34 @@ export function InquilinosPage() {
     fetchInquilinos();
   }, [fetchInquilinos]);
 
+  // Fetch propiedades disponibles para el formulario
+  const fetchPropiedadesDisponibles = async (inquilinoActual?: Inquilino) => {
+    try {
+      // Obtener propiedades disponibles
+      const disponibles = await getPropiedadesDisponibles();
+      
+      // Si estamos editando y el inquilino tiene propiedad, agregarla a la lista
+      if (inquilinoActual?.propiedad) {
+        const yaIncluida = disponibles.some(p => p.id === inquilinoActual.propiedad?.id);
+        if (!yaIncluida) {
+          setPropiedadesDisponibles([inquilinoActual.propiedad, ...disponibles]);
+          return;
+        }
+      }
+      
+      setPropiedadesDisponibles(disponibles);
+    } catch (err) {
+      console.error('Error al cargar propiedades:', err);
+      // En caso de error, intentar cargar todas las propiedades
+      try {
+        const todas = await getAllPropiedades();
+        setPropiedadesDisponibles(todas.filter(p => p.estado === 'disponible' || p.id === inquilinoActual?.propiedad?.id));
+      } catch {
+        setPropiedadesDisponibles([]);
+      }
+    }
+  };
+
   const handleOpenModal = (inquilino?: Inquilino) => {
     if (inquilino) {
       setEditingInquilino(inquilino);
@@ -75,11 +105,13 @@ export function InquilinosPage() {
         telefono: inquilino.telefono,
         documento: inquilino.documento,
         avatar: inquilino.avatar || '',
-        propiedadId: inquilino.propiedadId,
+        propiedadId: inquilino.propiedad?.id,
       });
+      fetchPropiedadesDisponibles(inquilino);
     } else {
       setEditingInquilino(null);
       setFormData(emptyFormData);
+      fetchPropiedadesDisponibles();
     }
     setShowModal(true);
   };
@@ -180,6 +212,111 @@ export function InquilinosPage() {
   const startItem = currentPage * pageSize + 1;
   const endItem = Math.min((currentPage + 1) * pageSize, totalElements);
 
+  // Componente para manejar imágenes con fallback
+  const TenantAvatar = ({ src, alt, size = 40 }: { src?: string; alt: string; size?: number }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoaded, setImageLoaded] = useState(false);
+
+    // Reset error state when src changes
+    useEffect(() => {
+      setImageError(false);
+      setImageLoaded(false);
+    }, [src]);
+
+    // Validar URL
+    const isValidUrl = (url?: string): boolean => {
+      if (!url || url.trim() === '') return false;
+      try {
+        new URL(url);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const showFallback = !src || !isValidUrl(src) || imageError;
+
+    if (showFallback) {
+      return (
+        <div 
+          className="tenant-avatar-fallback"
+          style={{
+            width: size,
+            height: size,
+            minWidth: size,
+            minHeight: size,
+            backgroundColor: '#e5e7eb',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#9ca3af'
+          }}
+        >
+          <svg 
+            width={size * 0.5} 
+            height={size * 0.5} 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2"
+          >
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ position: 'relative', width: size, height: size, minWidth: size, minHeight: size }}>
+        {!imageLoaded && (
+          <div 
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: size,
+              height: size,
+              backgroundColor: '#e5e7eb',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <div style={{
+              width: size * 0.4,
+              height: size * 0.4,
+              border: '2px solid #d1d5db',
+              borderTop: '2px solid #3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+          </div>
+        )}
+        <img
+          src={src}
+          alt={alt}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: '50%',
+            objectFit: 'cover',
+            display: imageLoaded ? 'block' : 'none'
+          }}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => {
+            setImageError(true);
+            setImageLoaded(false);
+          }}
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="inquilinos-page">
       <div className="page-header">
@@ -196,17 +333,21 @@ export function InquilinosPage() {
           color: '#dc2626',
           padding: '12px 16px',
           borderRadius: '8px',
-          marginBottom: '16px'
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
-          {error}
+          <span>{error}</span>
           <button
             onClick={() => setError(null)}
             style={{
-              marginLeft: '12px',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: '#dc2626'
+              color: '#dc2626',
+              fontSize: '18px',
+              padding: '0 8px'
             }}
           >
             ×
@@ -272,20 +413,17 @@ export function InquilinosPage() {
                 {inquilinos.map((inquilino) => (
                   <tr key={inquilino.id}>
                     <td>
-                      <div className="tenant-cell">
-                        <img
-                          src={inquilino.avatar || '/default-avatar.png'}
-                          alt={inquilino.nombre}
-                          className="tenant-avatar"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/default-avatar.png';
-                          }}
+                      <div className="tenant-cell" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <TenantAvatar 
+                          src={inquilino.avatar} 
+                          alt={`${inquilino.nombre} ${inquilino.apellido}`}
+                          size={40}
                         />
                         <div className="tenant-info">
-                          <span className="tenant-name">
+                          <span className="tenant-name" style={{ fontWeight: '500', display: 'block' }}>
                             {inquilino.nombre} {inquilino.apellido}
                           </span>
-                          <span className="tenant-subtitle">
+                          <span className="tenant-subtitle" style={{ fontSize: '13px', color: '#6b7280' }}>
                             {inquilino.propiedad?.nombre || 'Sin propiedad'}
                           </span>
                         </div>
@@ -294,13 +432,15 @@ export function InquilinosPage() {
                     <td>
                       {inquilino.propiedad ? (
                         <div className="property-info-cell">
-                          <span className="property-name-text">{inquilino.propiedad.nombre}</span>
-                          <span className="property-address-text">
+                          <span className="property-name-text" style={{ fontWeight: '500', display: 'block' }}>
+                            {inquilino.propiedad.nombre}
+                          </span>
+                          <span className="property-address-text" style={{ fontSize: '13px', color: '#6b7280' }}>
                             {inquilino.propiedad.direccion}, {inquilino.propiedad.ciudad}
                           </span>
                         </div>
                       ) : (
-                        <span className="no-property">Sin propiedad</span>
+                        <span className="no-property" style={{ color: '#9ca3af' }}>Sin propiedad</span>
                       )}
                     </td>
                     <td>
@@ -308,22 +448,27 @@ export function InquilinosPage() {
                     </td>
                     <td>
                       {inquilino.contratoEstado === 'sin_contrato' || !inquilino.contratoEstado ? (
-                        <span className="no-contract">No contrato</span>
+                        <span className="no-contract" style={{ color: '#9ca3af' }}>No contrato</span>
                       ) : (
                         <div className="contract-info">
                           <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
-                            {inquilino.contratoEstado === 'activo' ? 'Active' : 'Finalizado'}
+                            {inquilino.contratoEstado === 'activo' ? 'Activo' : 'Finalizado'}
                           </span>
                           {inquilino.contratoFin && (
-                            <span className="contract-date">
-                              $) {formatDate(inquilino.contratoFin)}
+                            <span className="contract-date" style={{ 
+                              display: 'block', 
+                              fontSize: '12px', 
+                              color: '#6b7280',
+                              marginTop: '4px' 
+                            }}>
+                              {formatDate(inquilino.contratoFin)}
                             </span>
                           )}
                         </div>
                       )}
                     </td>
                     <td>
-                      <div className="action-buttons">
+                      <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
                         <button
                           className="btn btn-outline btn-sm"
                           onClick={() => handleOpenModal(inquilino)}
@@ -475,15 +620,44 @@ export function InquilinosPage() {
                 </div>
 
                 <div className="form-group">
+                  <label htmlFor="propiedadId">Propiedad (opcional)</label>
+                  <select
+                    id="propiedadId"
+                    name="propiedadId"
+                    value={formData.propiedadId || ''}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Sin propiedad asignada</option>
+                    {propiedadesDisponibles.map((propiedad) => (
+                      <option key={propiedad.id} value={propiedad.id}>
+                        {propiedad.nombre} - {propiedad.direccion}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
                   <label htmlFor="avatar">URL de foto (opcional)</label>
                   <input
-                    type="url"
+                    type="text"
                     id="avatar"
                     name="avatar"
                     value={formData.avatar}
                     onChange={handleInputChange}
-                    placeholder="https://..."
+                    placeholder="https://ejemplo.com/imagen.jpg"
                   />
+                  <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                    Ingresa una URL válida de imagen (jpg, png, webp). Ej: https://i.imgur.com/xxxxx.jpg
+                  </small>
+                  {/* Vista previa de la imagen */}
+                  {formData.avatar && (
+                    <div style={{ marginTop: '12px' }}>
+                      <span style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>
+                        Vista previa:
+                      </span>
+                      <TenantAvatar src={formData.avatar} alt="Vista previa" size={64} />
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">
@@ -498,6 +672,14 @@ export function InquilinosPage() {
           </div>
         </div>
       )}
+
+      {/* CSS para animación de spinner */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
