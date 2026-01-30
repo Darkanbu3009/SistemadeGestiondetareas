@@ -7,8 +7,10 @@ import com.taskmanager.backend.model.Propiedad;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -65,4 +67,15 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
            "(LOWER(i.nombre) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(i.apellido) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Pago> searchByUser(@Param("user") User user, @Param("search") String search, Pageable pageable);
+
+    // DELETE methods for cascade deletion
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Pago p WHERE p.inquilino.id = :inquilinoId")
+    void deleteByInquilinoId(@Param("inquilinoId") Long inquilinoId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Pago p WHERE p.propiedad.id = :propiedadId")
+    void deleteByPropiedadId(@Param("propiedadId") Long propiedadId);
 }
