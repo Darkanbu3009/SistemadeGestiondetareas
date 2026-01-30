@@ -36,6 +36,10 @@ Reiniciar todo docker-compose restart
 Ver logs docker-compose logs -f
 Ver estado docker-compose ps
 
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+
 
 
 
