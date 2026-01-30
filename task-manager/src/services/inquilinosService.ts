@@ -53,6 +53,18 @@ export const getAllInquilinos = async (): Promise<Inquilino[]> => {
   return handleResponse(response);
 };
 
+// Get inquilinos by propiedad ID
+export const getInquilinosByPropiedad = async (propiedadId: number): Promise<Inquilino[]> => {
+  try {
+    // Obtener todos los inquilinos y filtrar por propiedad
+    const allInquilinos = await getAllInquilinos();
+    return allInquilinos.filter(inquilino => inquilino.propiedad?.id === propiedadId);
+  } catch (error) {
+    console.error('Error fetching inquilinos by propiedad:', error);
+    return [];
+  }
+};
+
 // Get a single inquilino by ID
 export const getInquilinoById = async (id: number): Promise<Inquilino> => {
   const response = await fetch(`${API_URL}/inquilinos/${id}`, {
