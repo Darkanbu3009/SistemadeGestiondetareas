@@ -6,6 +6,7 @@ import {
   updatePropiedad,
   deletePropiedad,
 } from '../../services/propiedadService';
+import { getInquilinosByPropiedad } from '../../services/inquilinosService';
 
 const emptyFormData: PropiedadFormData = {
   nombre: '',
@@ -18,8 +19,17 @@ const emptyFormData: PropiedadFormData = {
   imagen: '',
 };
 
+type ViewMode = 'grid' | 'list';
+
+// Tipo extendido para incluir inquilino
+interface PropiedadConInquilino extends Propiedad {
+  inquilinoNombre?: string;
+  inquilinoApellido?: string;
+  inquilinoAvatar?: string;
+}
+
 export function PropiedadesPage() {
-  const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
+  const [propiedades, setPropiedades] = useState<PropiedadConInquilino[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -27,14 +37,37 @@ export function PropiedadesPage() {
   const [formData, setFormData] = useState<PropiedadFormData>(emptyFormData);
   const [searchTerm, setSearchTerm] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
-  // Load properties from API
+  // Load properties from API and fetch associated tenants
   const loadPropiedades = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getAllPropiedades();
-      setPropiedades(data);
+      
+      // Obtener inquilinos para cada propiedad
+      const propiedadesConInquilinos = await Promise.all(
+        data.map(async (propiedad) => {
+          try {
+            const inquilinos = await getInquilinosByPropiedad(propiedad.id);
+            if (inquilinos && inquilinos.length > 0) {
+              const inquilino = inquilinos[0];
+              return {
+                ...propiedad,
+                inquilinoNombre: inquilino.nombre,
+                inquilinoApellido: inquilino.apellido,
+                inquilinoAvatar: inquilino.avatar,
+              };
+            }
+          } catch {
+            // Si hay error obteniendo inquilinos, continuar sin ellos
+          }
+          return propiedad;
+        })
+      );
+      
+      setPropiedades(propiedadesConInquilinos);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar propiedades');
     } finally {
@@ -88,17 +121,12 @@ export function PropiedadesPage() {
 
     try {
       if (editingPropiedad) {
-        // Update existing
-        const updated = await updatePropiedad(editingPropiedad.id, formData);
-        setPropiedades((prev) =>
-          prev.map((p) => (p.id === editingPropiedad.id ? updated : p))
-        );
+        await updatePropiedad(editingPropiedad.id, formData);
       } else {
-        // Create new
-        const created = await createPropiedad(formData);
-        setPropiedades((prev) => [created, ...prev]);
+        await createPropiedad(formData);
       }
       handleCloseModal();
+      loadPropiedades(); // Recargar para obtener datos actualizados
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar propiedad');
     } finally {
@@ -138,6 +166,61 @@ export function PropiedadesPage() {
     }
   };
 
+  const getEstadoLabel = (estado: string) => {
+    switch (estado) {
+      case 'disponible':
+        return 'Disponible';
+      case 'ocupada':
+        return 'Ocupada';
+      case 'mantenimiento':
+        return 'Mantenimiento';
+      default:
+        return estado;
+    }
+  };
+
+  // Función para manejar errores de imagen
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.target as HTMLImageElement;
+    target.style.display = 'none';
+  };
+
+  // Placeholder para imágenes
+  const PropertyPlaceholder = () => (
+    <div className="property-placeholder" style={{
+      width: '48px',
+      height: '48px',
+      backgroundColor: '#e5e7eb',
+      borderRadius: '8px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9,22 9,12 15,12 15,22" />
+      </svg>
+    </div>
+  );
+
+  // Avatar placeholder
+  const AvatarPlaceholder = ({ size = 32 }: { size?: number }) => (
+    <div style={{
+      width: size,
+      height: size,
+      backgroundColor: '#e5e7eb',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    </div>
+  );
+
   return (
     <div className="propiedades-page">
       <div className="page-header">
@@ -161,7 +244,7 @@ export function PropiedadesPage() {
             onClick={() => setError(null)}
             style={{ marginLeft: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}
           >
-            X
+            ×
           </button>
         </div>
       )}
@@ -181,7 +264,11 @@ export function PropiedadesPage() {
           />
         </div>
         <div className="view-toggle">
-          <button className="view-btn active">
+          <button 
+            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+            onClick={() => setViewMode('grid')}
+            title="Vista en cuadrícula"
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" />
               <rect x="14" y="3" width="7" height="7" />
@@ -189,7 +276,11 @@ export function PropiedadesPage() {
               <rect x="3" y="14" width="7" height="7" />
             </svg>
           </button>
-          <button className="view-btn">
+          <button 
+            className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+            onClick={() => setViewMode('list')}
+            title="Vista en lista"
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="8" y1="6" x2="21" y2="6" />
               <line x1="8" y1="12" x2="21" y2="12" />
@@ -232,8 +323,158 @@ export function PropiedadesPage() {
         </div>
       )}
 
-      {/* Table */}
-      {!loading && propiedades.length > 0 && (
+      {/* Grid View */}
+      {!loading && propiedades.length > 0 && viewMode === 'grid' && (
+        <div className="properties-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+          gap: '24px',
+          marginTop: '24px'
+        }}>
+          {filteredPropiedades.map((propiedad) => (
+            <div key={propiedad.id} className="property-card" style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              overflow: 'hidden',
+              border: '1px solid #e5e7eb'
+            }}>
+              {/* Property Image */}
+              <div style={{
+                height: '180px',
+                backgroundColor: '#f3f4f6',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                {propiedad.imagen ? (
+                  <img
+                    src={propiedad.imagen}
+                    alt={propiedad.nombre}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                    onError={handleImageError}
+                  />
+                ) : (
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                      <polyline points="9,22 9,12 15,12 15,22" />
+                    </svg>
+                  </div>
+                )}
+                <span className={`badge ${getEstadoClass(propiedad.estado)}`} style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px'
+                }}>
+                  {getEstadoLabel(propiedad.estado)}
+                </span>
+              </div>
+
+              {/* Property Details */}
+              <div style={{ padding: '16px' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>
+                  {propiedad.nombre}
+                </h3>
+                <p style={{ margin: '0 0 12px 0', color: '#6b7280', fontSize: '14px' }}>
+                  {propiedad.direccion}, {propiedad.ciudad}
+                </p>
+                
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '16px'
+                }}>
+                  <span style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937' }}>
+                    ${propiedad.rentaMensual.toLocaleString()}
+                    <span style={{ fontSize: '14px', fontWeight: '400', color: '#6b7280' }}>/mes</span>
+                  </span>
+                </div>
+
+                {/* Inquilino */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
+                  marginBottom: '16px'
+                }}>
+                  {propiedad.inquilinoNombre ? (
+                    <>
+                      {propiedad.inquilinoAvatar ? (
+                        <img
+                          src={propiedad.inquilinoAvatar}
+                          alt={propiedad.inquilinoNombre}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            objectFit: 'cover'
+                          }}
+                          onError={handleImageError}
+                        />
+                      ) : (
+                        <AvatarPlaceholder size={32} />
+                      )}
+                      <div>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>
+                          {propiedad.inquilinoNombre} {propiedad.inquilinoApellido}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Inquilino</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <AvatarPlaceholder size={32} />
+                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>Sin inquilino</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => handleOpenModal(propiedad)}
+                    style={{ flex: 1 }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Editar
+                  </button>
+                  <button
+                    className="btn btn-outline btn-sm btn-danger"
+                    onClick={() => handleDelete(propiedad.id)}
+                    style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3,6 5,6 21,6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* List/Table View */}
+      {!loading && propiedades.length > 0 && viewMode === 'list' && (
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -250,13 +491,22 @@ export function PropiedadesPage() {
               {filteredPropiedades.map((propiedad) => (
                 <tr key={propiedad.id}>
                   <td>
-                    <div className="property-cell">
-                      {propiedad.imagen && (
+                    <div className="property-cell" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {propiedad.imagen ? (
                         <img
                           src={propiedad.imagen}
                           alt={propiedad.nombre}
                           className="property-thumbnail"
+                          style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '8px',
+                            objectFit: 'cover'
+                          }}
+                          onError={handleImageError}
                         />
+                      ) : (
+                        <PropertyPlaceholder />
                       )}
                       <span className="property-name">{propiedad.nombre}</span>
                     </div>
@@ -267,17 +517,28 @@ export function PropiedadesPage() {
                     </span>
                   </td>
                   <td>
-                    {propiedad.inquilino ? (
-                      <div className="tenant-cell-small">
-                        <img
-                          src={propiedad.inquilino.avatar || '/default-avatar.png'}
-                          alt={propiedad.inquilino.nombre}
-                          className="tenant-avatar-small"
-                        />
-                        <span>{propiedad.inquilino.nombre} {propiedad.inquilino.apellido}</span>
+                    {propiedad.inquilinoNombre ? (
+                      <div className="tenant-cell-small" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {propiedad.inquilinoAvatar ? (
+                          <img
+                            src={propiedad.inquilinoAvatar}
+                            alt={propiedad.inquilinoNombre}
+                            className="tenant-avatar-small"
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              objectFit: 'cover'
+                            }}
+                            onError={handleImageError}
+                          />
+                        ) : (
+                          <AvatarPlaceholder size={28} />
+                        )}
+                        <span>{propiedad.inquilinoNombre} {propiedad.inquilinoApellido}</span>
                       </div>
                     ) : (
-                      <span className="no-tenant">Sin inquilino</span>
+                      <span className="no-tenant" style={{ color: '#9ca3af' }}>Sin inquilino</span>
                     )}
                   </td>
                   <td>
@@ -285,12 +546,11 @@ export function PropiedadesPage() {
                   </td>
                   <td>
                     <span className={`badge ${getEstadoClass(propiedad.estado)}`}>
-                      {propiedad.estado === 'disponible' ? 'Disponible' :
-                       propiedad.estado === 'ocupada' ? 'Ocupada' : 'Mantenimiento'}
+                      {getEstadoLabel(propiedad.estado)}
                     </span>
                   </td>
                   <td>
-                    <div className="action-buttons">
+                    <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
                       <button
                         className="btn btn-icon"
                         onClick={() => handleOpenModal(propiedad)}
@@ -327,7 +587,7 @@ export function PropiedadesPage() {
           <div className="pagination-controls">
             <button className="pagination-btn" disabled>&lt;</button>
             <button className="pagination-btn active">1</button>
-            <button className="pagination-btn">&gt;</button>
+            <button className="pagination-btn" disabled>&gt;</button>
           </div>
         </div>
       )}
