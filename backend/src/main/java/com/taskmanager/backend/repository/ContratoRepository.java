@@ -7,8 +7,10 @@ import com.taskmanager.backend.model.Propiedad;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -72,4 +74,15 @@ public interface ContratoRepository extends JpaRepository<Contrato, Long> {
                                              @Param("user") User user,
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
+
+    // DELETE methods for cascade deletion
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Contrato c WHERE c.inquilino.id = :inquilinoId")
+    void deleteByInquilinoId(@Param("inquilinoId") Long inquilinoId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Contrato c WHERE c.propiedad.id = :propiedadId")
+    void deleteByPropiedadId(@Param("propiedadId") Long propiedadId);
 }
