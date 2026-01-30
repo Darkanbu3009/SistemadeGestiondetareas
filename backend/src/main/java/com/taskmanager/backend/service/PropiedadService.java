@@ -1,7 +1,11 @@
 package com.taskmanager.backend.service;
 
 import com.taskmanager.backend.model.Propiedad;
+import com.taskmanager.backend.model.Inquilino;
 import com.taskmanager.backend.model.User;
+import com.taskmanager.backend.repository.ContratoRepository;
+import com.taskmanager.backend.repository.InquilinoRepository;
+import com.taskmanager.backend.repository.PagoRepository;
 import com.taskmanager.backend.repository.PropiedadRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,9 +19,18 @@ import java.util.List;
 public class PropiedadService {
 
     private final PropiedadRepository repository;
+    private final InquilinoRepository inquilinoRepository;
+    private final ContratoRepository contratoRepository;
+    private final PagoRepository pagoRepository;
 
-    public PropiedadService(PropiedadRepository repository) {
+    public PropiedadService(PropiedadRepository repository,
+                           InquilinoRepository inquilinoRepository,
+                           ContratoRepository contratoRepository,
+                           PagoRepository pagoRepository) {
         this.repository = repository;
+        this.inquilinoRepository = inquilinoRepository;
+        this.contratoRepository = contratoRepository;
+        this.pagoRepository = pagoRepository;
     }
 
     public List<Propiedad> getAllByUser(User user) {
@@ -70,9 +83,26 @@ public class PropiedadService {
     }
 
     public void delete(Long id, User user) {
-        if (!repository.existsByIdAndUser(id, user)) {
-            throw new RuntimeException("Propiedad no encontrada con id: " + id);
+        Propiedad propiedad = getById(id, user);
+
+        // Delete associated payments first
+        if (pagoRepository != null) {
+            pagoRepository.deleteByPropiedadId(id);
         }
+
+        // Delete associated contracts first
+        if (contratoRepository != null) {
+            contratoRepository.deleteByPropiedadId(id);
+        }
+
+        // Unassign any inquilinos from this property
+        List<Inquilino> inquilinos = inquilinoRepository.findByPropiedadId(id);
+        for (Inquilino inquilino : inquilinos) {
+            inquilino.setPropiedad(null);
+            inquilino.setContratoEstado("sin_contrato");
+            inquilinoRepository.save(inquilino);
+        }
+
         repository.deleteById(id);
     }
 
