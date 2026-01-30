@@ -86,14 +86,10 @@ public class PropiedadService {
         Propiedad propiedad = getById(id, user);
 
         // Delete associated payments first
-        if (pagoRepository != null) {
-            pagoRepository.deleteByPropiedadId(id);
-        }
+        pagoRepository.deleteByPropiedadId(id);
 
-        // Delete associated contracts first
-        if (contratoRepository != null) {
-            contratoRepository.deleteByPropiedadId(id);
-        }
+        // Delete associated contracts
+        contratoRepository.deleteByPropiedadId(id);
 
         // Unassign any inquilinos from this property
         List<Inquilino> inquilinos = inquilinoRepository.findByPropiedadId(id);
