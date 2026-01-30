@@ -27,6 +27,7 @@ public interface InquilinoRepository extends JpaRepository<Inquilino, Long> {
 
     List<Inquilino> findByUserAndContratoEstado(User user, String contratoEstado);
 
+    // Find inquilinos by propiedad ID (for cascade operations)
     List<Inquilino> findByPropiedadId(Long propiedadId);
 
     @Query("SELECT COUNT(i) FROM Inquilino i WHERE i.user = :user")
