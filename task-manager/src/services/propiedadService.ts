@@ -98,9 +98,29 @@ export const deletePropiedad = async (id: number): Promise<void> => {
   }
 };
 
-// Get available properties
+// Get available properties (estado = 'disponible')
 export const getPropiedadesDisponibles = async (): Promise<Propiedad[]> => {
   const response = await fetch(`${API_URL}/propiedades/disponibles`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response);
+};
+
+// Get property stats count
+export const getPropiedadesCount = async (): Promise<number> => {
+  const response = await fetch(`${API_URL}/propiedades/stats/count`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse(response);
+};
+
+// Get property count by estado
+export const getPropiedadesCountByEstado = async (estado: string): Promise<number> => {
+  const response = await fetch(`${API_URL}/propiedades/stats/count/${estado}`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
