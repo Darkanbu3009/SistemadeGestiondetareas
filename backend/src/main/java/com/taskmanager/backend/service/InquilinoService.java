@@ -140,14 +140,10 @@ public class InquilinoService {
         Inquilino inquilino = getById(id, user);
 
         // Delete associated payments first
-        if (pagoRepository != null) {
-            pagoRepository.deleteByInquilinoId(id);
-        }
+        pagoRepository.deleteByInquilinoId(id);
 
-        // Delete associated contracts first
-        if (contratoRepository != null) {
-            contratoRepository.deleteByInquilinoId(id);
-        }
+        // Delete associated contracts
+        contratoRepository.deleteByInquilinoId(id);
 
         // Free up property if assigned
         if (inquilino.getPropiedad() != null) {
