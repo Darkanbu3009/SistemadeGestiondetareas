@@ -11,6 +11,14 @@ const getAuthHeaders = (): HeadersInit => {
   };
 };
 
+// Helper to get auth headers for file upload (sin Content-Type)
+const getAuthHeadersForUpload = (): HeadersInit => {
+  const token = localStorage.getItem('token');
+  return {
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+};
+
 // Handle API errors
 const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
@@ -129,6 +137,45 @@ export const deleteContrato = async (id: number): Promise<void> => {
     throw new Error(error.message || `Error: ${response.status}`);
   }
 };
+
+// ============================================
+// NUEVAS FUNCIONES AGREGADAS
+// ============================================
+
+// Upload PDF document for a contrato
+export const uploadContratoPdf = async (id: number, file: File): Promise<Contrato> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_URL}/contratos/${id}/upload-pdf`, {
+    method: 'POST',
+    headers: getAuthHeadersForUpload(),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Error al subir PDF' }));
+    console.error('Upload PDF error:', errorData);
+    throw new Error(errorData.message || `Error: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+// Update contrato estado
+export const updateContratoEstado = async (id: number, estado: string): Promise<Contrato> => {
+  const response = await fetch(`${API_URL}/contratos/${id}/estado`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ estado }),
+  });
+
+  return handleResponse(response);
+};
+
+// ============================================
+// FIN DE NUEVAS FUNCIONES
+// ============================================
 
 // Firmar a contrato
 export const firmarContrato = async (id: number): Promise<Contrato> => {
