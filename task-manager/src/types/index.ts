@@ -1,5 +1,4 @@
 // Types for Zelvoria Property Management System
-
 export interface User {
   id: number;
   name: string;
@@ -15,7 +14,7 @@ export interface Propiedad {
   pais: string;
   tipo: 'apartamento' | 'casa' | 'local' | 'oficina' | 'otro';
   rentaMensual: number;
-  estado: 'disponible' | 'ocupada' | 'mantenimiento';
+  estado: 'disponible' | 'ocupada' | 'mantenimiento' | 'reservada';
   imagen?: string;
   inquilinoId?: number;
   inquilino?: Inquilino;
@@ -33,7 +32,7 @@ export interface Inquilino {
   avatar?: string;
   propiedadId?: number;
   propiedad?: Propiedad;
-  contratoEstado?: 'activo' | 'finalizado' | 'sin_contrato';
+  contratoEstado?: 'activo' | 'en_proceso' | 'finalizado' | 'sin_contrato';
   contratoFin?: string;
   createdAt: string;
   updatedAt: string;
@@ -55,6 +54,9 @@ export interface Pago {
   updatedAt: string;
 }
 
+// Estados de contrato actualizados
+export type ContratoEstado = 'sin_firmar' | 'en_proceso' | 'firmado' | 'activo' | 'por_vencer' | 'finalizado';
+
 export interface Contrato {
   id: number;
   inquilinoId: number;
@@ -64,8 +66,9 @@ export interface Contrato {
   fechaInicio: string;
   fechaFin: string;
   rentaMensual: number;
-  estado: 'activo' | 'por_vencer' | 'finalizado' | 'sin_firmar';
+  estado: ContratoEstado;
   pdfUrl?: string;
+  diasRestantes?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -124,6 +127,7 @@ export interface ContratoFormData {
   fechaInicio: string;
   fechaFin: string;
   rentaMensual: number;
+  estado?: ContratoEstado;
   pdfUrl?: string;
 }
 
