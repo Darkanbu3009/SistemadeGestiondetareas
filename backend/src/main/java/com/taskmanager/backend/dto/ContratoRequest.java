@@ -27,6 +27,9 @@ public class ContratoRequest {
     @Size(max = 500, message = "La URL del PDF no puede exceder 500 caracteres")
     private String pdfUrl;
 
+    @Size(max = 20, message = "El estado no puede exceder 20 caracteres")
+    private String estado;
+
     // Getters and Setters
     public Long getInquilinoId() {
         return inquilinoId;
@@ -74,5 +77,13 @@ public class ContratoRequest {
 
     public void setPdfUrl(String pdfUrl) {
         this.pdfUrl = pdfUrl;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
     }
 }
