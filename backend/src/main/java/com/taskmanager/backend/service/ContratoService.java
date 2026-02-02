@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -22,6 +23,10 @@ public class ContratoService {
     private final ContratoRepository repository;
     private final InquilinoRepository inquilinoRepository;
     private final PropiedadRepository propiedadRepository;
+
+    private static final List<String> VALID_ESTADOS = Arrays.asList(
+        "sin_firmar", "en_proceso", "firmado", "activo", "por_vencer", "finalizado"
+    );
 
     public ContratoService(ContratoRepository repository, InquilinoRepository inquilinoRepository,
                            PropiedadRepository propiedadRepository) {
@@ -38,6 +43,10 @@ public class ContratoService {
         return repository.findByUser(user, pageable);
     }
 
+    public Page<Contrato> getByEstadoPaginated(User user, String estado, Pageable pageable) {
+        return repository.findByUserAndEstado(user, estado, pageable);
+    }
+
     public Contrato getById(Long id, User user) {
         return repository.findByIdAndUser(id, user)
                 .orElseThrow(() -> new RuntimeException("Contrato no encontrado con id: " + id));
@@ -50,7 +59,6 @@ public class ContratoService {
         Propiedad propiedad = propiedadRepository.findByIdAndUser(propiedadId, user)
                 .orElseThrow(() -> new RuntimeException("Propiedad no encontrada con id: " + propiedadId));
 
-        // Check for overlapping contracts
         List<Contrato> overlapping = repository.findOverlappingContracts(
                 propiedad, user, contrato.getFechaInicio(), contrato.getFechaFin());
         if (!overlapping.isEmpty()) {
@@ -61,31 +69,61 @@ public class ContratoService {
         contrato.setPropiedad(propiedad);
         contrato.setUser(user);
 
-        // Update tenant's contract status and property
-        inquilino.setContratoEstado("activo");
+        String estado = contrato.getEstado();
+        if (estado == null || estado.isEmpty()) {
+            estado = "sin_firmar";
+        }
+        if (!VALID_ESTADOS.contains(estado)) {
+            throw new RuntimeException("Estado inválido: " + estado);
+        }
+        contrato.setEstado(estado);
+
+        // Sincronizar estado con inquilino
+        syncInquilinoContratoEstado(inquilino, contrato);
         inquilino.setContratoFin(contrato.getFechaFin());
         inquilino.setPropiedad(propiedad);
         inquilinoRepository.save(inquilino);
 
-        // Update property status
-        propiedad.setEstado("ocupada");
+        updatePropiedadEstado(propiedad, estado);
         propiedadRepository.save(propiedad);
 
         return repository.save(contrato);
     }
 
-    public Contrato update(Long id, Contrato contratoDetails, User user) {
+    public Contrato update(Long id, Contrato contratoDetails, Long inquilinoId, Long propiedadId, User user) {
         Contrato contrato = getById(id, user);
+
+        if (inquilinoId != null && !inquilinoId.equals(contrato.getInquilino().getId())) {
+            Inquilino oldInquilino = contrato.getInquilino();
+            oldInquilino.setContratoEstado("sin_contrato");
+            oldInquilino.setContratoFin(null);
+            inquilinoRepository.save(oldInquilino);
+
+            Inquilino newInquilino = inquilinoRepository.findByIdAndUser(inquilinoId, user)
+                    .orElseThrow(() -> new RuntimeException("Inquilino no encontrado con id: " + inquilinoId));
+            contrato.setInquilino(newInquilino);
+        }
+
+        if (propiedadId != null && !propiedadId.equals(contrato.getPropiedad().getId())) {
+            Propiedad oldPropiedad = contrato.getPropiedad();
+            oldPropiedad.setEstado("disponible");
+            propiedadRepository.save(oldPropiedad);
+
+            Propiedad newPropiedad = propiedadRepository.findByIdAndUser(propiedadId, user)
+                    .orElseThrow(() -> new RuntimeException("Propiedad no encontrada con id: " + propiedadId));
+            contrato.setPropiedad(newPropiedad);
+            
+            updatePropiedadEstado(newPropiedad, contrato.getEstado());
+            propiedadRepository.save(newPropiedad);
+        }
 
         if (contratoDetails.getFechaInicio() != null) {
             contrato.setFechaInicio(contratoDetails.getFechaInicio());
         }
         if (contratoDetails.getFechaFin() != null) {
             contrato.setFechaFin(contratoDetails.getFechaFin());
-            // Update tenant's contract end date
             if (contrato.getInquilino() != null) {
                 contrato.getInquilino().setContratoFin(contratoDetails.getFechaFin());
-                inquilinoRepository.save(contrato.getInquilino());
             }
         }
         if (contratoDetails.getRentaMensual() != null) {
@@ -95,27 +133,67 @@ public class ContratoService {
             contrato.setPdfUrl(contratoDetails.getPdfUrl());
         }
 
-        // Update estado
-        contrato.updateEstado();
+        if (contratoDetails.getEstado() != null && !contratoDetails.getEstado().isEmpty()) {
+            String newEstado = contratoDetails.getEstado();
+            if (!VALID_ESTADOS.contains(newEstado)) {
+                throw new RuntimeException("Estado inválido: " + newEstado);
+            }
+            contrato.setEstado(newEstado);
+            
+            syncInquilinoContratoEstado(contrato.getInquilino(), contrato);
+            
+            updatePropiedadEstado(contrato.getPropiedad(), newEstado);
+            propiedadRepository.save(contrato.getPropiedad());
+        }
+
+        inquilinoRepository.save(contrato.getInquilino());
 
         return repository.save(contrato);
     }
 
-    public Contrato firmar(Long id, User user) {
+    public Contrato update(Long id, Contrato contratoDetails, User user) {
+        Contrato existing = getById(id, user);
+        return update(id, contratoDetails, existing.getInquilino().getId(), existing.getPropiedad().getId(), user);
+    }
+
+    public Contrato updateEstado(Long id, String estado, User user) {
         Contrato contrato = getById(id, user);
-        if (!"sin_firmar".equals(contrato.getEstado())) {
-            throw new RuntimeException("El contrato ya ha sido firmado");
+        
+        if (!VALID_ESTADOS.contains(estado)) {
+            throw new RuntimeException("Estado inválido: " + estado);
         }
-        contrato.setEstado("activo");
-        contrato.updateEstado(); // Will set correct status based on dates
+
+        contrato.setEstado(estado);
+
+        Inquilino inquilino = contrato.getInquilino();
+        if (inquilino != null) {
+            syncInquilinoContratoEstado(inquilino, contrato);
+            inquilinoRepository.save(inquilino);
+        }
+
+        Propiedad propiedad = contrato.getPropiedad();
+        if (propiedad != null) {
+            updatePropiedadEstado(propiedad, estado);
+            propiedadRepository.save(propiedad);
+        }
+
         return repository.save(contrato);
+    }
+
+    public Contrato updatePdfUrl(Long id, String pdfUrl, User user) {
+        Contrato contrato = getById(id, user);
+        contrato.setPdfUrl(pdfUrl);
+        return repository.save(contrato);
+    }
+
+    public Contrato firmar(Long id, User user) {
+        return updateEstado(id, "firmado", user);
     }
 
     public Contrato finalizar(Long id, User user) {
         Contrato contrato = getById(id, user);
         contrato.setEstado("finalizado");
 
-        // Update tenant status
         Inquilino inquilino = contrato.getInquilino();
         if (inquilino != null) {
             inquilino.setContratoEstado("finalizado");
@@ -123,7 +201,6 @@ public class ContratoService {
             inquilinoRepository.save(inquilino);
         }
 
-        // Free up property
         Propiedad propiedad = contrato.getPropiedad();
         if (propiedad != null) {
             propiedad.setEstado("disponible");
@@ -136,8 +213,9 @@ public class ContratoService {
     public void delete(Long id, User user) {
         Contrato contrato = getById(id, user);
 
-        // Update tenant status if contract was active
-        if ("activo".equals(contrato.getEstado()) || "por_vencer".equals(contrato.getEstado())) {
+        String estado = contrato.getEstado();
+        if ("activo".equals(estado) || "por_vencer".equals(estado) || 
+            "firmado".equals(estado) || "en_proceso".equals(estado)) {
             Inquilino inquilino = contrato.getInquilino();
             if (inquilino != null) {
                 inquilino.setContratoEstado("sin_contrato");
@@ -146,7 +224,6 @@ public class ContratoService {
                 inquilinoRepository.save(inquilino);
             }
 
-            // Free up property
             Propiedad propiedad = contrato.getPropiedad();
             if (propiedad != null) {
                 propiedad.setEstado("disponible");
@@ -158,7 +235,7 @@ public class ContratoService {
     }
 
     public List<Contrato> getByEstado(User user, String estado) {
-        return repository.findByUserAndEstado(user, estado);
+        return repository.findByUserAndEstadoList(user, estado);
     }
 
     public List<Contrato> getProximosAVencer(User user, int days) {
@@ -185,5 +262,62 @@ public class ContratoService {
 
     public Long countByUserAndEstado(User user, String estado) {
         return repository.countByUserAndEstado(user, estado);
+    }
+
+    /**
+     * Sincroniza el estado del contrato con el campo contrato_estado del inquilino
+     */
+    private void syncInquilinoContratoEstado(Inquilino inquilino, Contrato contrato) {
+        if (inquilino == null || contrato == null) {
+            return;
+        }
+
+        String contratoEstado = contrato.getEstado();
+        String inquilinoEstado;
+
+        switch (contratoEstado) {
+            case "sin_firmar":
+            case "en_proceso":
+                inquilinoEstado = "en_proceso";
+                break;
+            case "firmado":
+            case "activo":
+            case "por_vencer":
+                inquilinoEstado = "activo";
+                break;
+            case "finalizado":
+                inquilinoEstado = "finalizado";
+                break;
+            default:
+                inquilinoEstado = "sin_contrato";
+        }
+
+        inquilino.setContratoEstado(inquilinoEstado);
+    }
+
+    /**
+     * Actualiza el estado de la propiedad según el estado del contrato
+     */
+    private void updatePropiedadEstado(Propiedad propiedad, String contratoEstado) {
+        if (propiedad == null) {
+            return;
+        }
+
+        switch (contratoEstado) {
+            case "finalizado":
+                propiedad.setEstado("disponible");
+                break;
+            case "sin_firmar":
+            case "en_proceso":
+                propiedad.setEstado("reservada");
+                break;
+            case "firmado":
+            case "activo":
+            case "por_vencer":
+                propiedad.setEstado("ocupada");
+                break;
+            default:
+                break;
+        }
     }
 }
