@@ -26,7 +26,12 @@ public interface ContratoRepository extends JpaRepository<Contrato, Long> {
 
     boolean existsByIdAndUser(Long id, User user);
 
-    List<Contrato> findByUserAndEstado(User user, String estado);
+    // Paginated query by estado
+    Page<Contrato> findByUserAndEstado(User user, String estado, Pageable pageable);
+
+    // List query by estado
+    @Query("SELECT c FROM Contrato c WHERE c.user = :user AND c.estado = :estado ORDER BY c.createdAt DESC")
+    List<Contrato> findByUserAndEstadoList(@Param("user") User user, @Param("estado") String estado);
 
     List<Contrato> findByInquilinoAndUser(Inquilino inquilino, User user);
 
@@ -38,35 +43,30 @@ public interface ContratoRepository extends JpaRepository<Contrato, Long> {
     @Query("SELECT COUNT(c) FROM Contrato c WHERE c.user = :user AND c.estado = :estado")
     Long countByUserAndEstado(@Param("user") User user, @Param("estado") String estado);
 
-    // Get contracts about to expire (within 30 days)
-    @Query("SELECT c FROM Contrato c WHERE c.user = :user AND c.estado = 'activo' " +
+    @Query("SELECT c FROM Contrato c WHERE c.user = :user AND c.estado IN ('activo', 'firmado') " +
            "AND c.fechaFin BETWEEN :today AND :futureDate ORDER BY c.fechaFin ASC")
     List<Contrato> findProximosAVencer(@Param("user") User user,
                                         @Param("today") LocalDate today,
                                         @Param("futureDate") LocalDate futureDate);
 
-    // Get active contract for a specific property
     @Query("SELECT c FROM Contrato c WHERE c.propiedad = :propiedad AND c.user = :user " +
-           "AND c.estado IN ('activo', 'por_vencer') ORDER BY c.fechaFin DESC")
+           "AND c.estado IN ('activo', 'por_vencer', 'firmado') ORDER BY c.fechaFin DESC")
     Optional<Contrato> findActiveByPropiedadAndUser(@Param("propiedad") Propiedad propiedad,
                                                      @Param("user") User user);
 
-    // Get active contract for a specific tenant
     @Query("SELECT c FROM Contrato c WHERE c.inquilino = :inquilino AND c.user = :user " +
-           "AND c.estado IN ('activo', 'por_vencer') ORDER BY c.fechaFin DESC")
+           "AND c.estado IN ('activo', 'por_vencer', 'firmado') ORDER BY c.fechaFin DESC")
     Optional<Contrato> findActiveByInquilinoAndUser(@Param("inquilino") Inquilino inquilino,
                                                      @Param("user") User user);
 
-    // Search contracts
     @Query("SELECT c FROM Contrato c JOIN c.inquilino i JOIN c.propiedad p WHERE c.user = :user AND " +
            "(LOWER(i.nombre) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(i.apellido) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(p.nombre) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Contrato> searchByUser(@Param("user") User user, @Param("search") String search, Pageable pageable);
 
-    // Check for overlapping contracts on a property
     @Query("SELECT c FROM Contrato c WHERE c.propiedad = :propiedad AND c.user = :user " +
-           "AND c.estado != 'finalizado' AND " +
+           "AND c.estado NOT IN ('finalizado', 'sin_firmar') AND " +
            "((c.fechaInicio BETWEEN :startDate AND :endDate) OR " +
            "(c.fechaFin BETWEEN :startDate AND :endDate) OR " +
            "(c.fechaInicio <= :startDate AND c.fechaFin >= :endDate))")
@@ -75,7 +75,11 @@ public interface ContratoRepository extends JpaRepository<Contrato, Long> {
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
 
-    // DELETE methods for cascade deletion
+    @Query("SELECT c FROM Contrato c WHERE c.inquilino = :inquilino AND c.user = :user " +
+           "AND c.estado NOT IN ('finalizado') ORDER BY c.createdAt DESC")
+    List<Contrato> findActiveContractsByInquilino(@Param("inquilino") Inquilino inquilino,
+                                                   @Param("user") User user);
+
     @Modifying
     @Transactional
     @Query("DELETE FROM Contrato c WHERE c.inquilino.id = :inquilinoId")
