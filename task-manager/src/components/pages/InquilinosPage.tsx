@@ -29,24 +29,21 @@ export function InquilinosPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const pageSize = 10;
 
-  // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
-      setCurrentPage(0); // Reset to first page on search
+      setCurrentPage(0);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch inquilinos from API
   const fetchInquilinos = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -67,13 +64,9 @@ export function InquilinosPage() {
     fetchInquilinos();
   }, [fetchInquilinos]);
 
-  // Fetch propiedades disponibles para el formulario
   const fetchPropiedadesDisponibles = async (inquilinoActual?: Inquilino) => {
     try {
-      // Obtener propiedades disponibles
       const disponibles = await getPropiedadesDisponibles();
-      
-      // Si estamos editando y el inquilino tiene propiedad, agregarla a la lista
       if (inquilinoActual?.propiedad) {
         const yaIncluida = disponibles.some(p => p.id === inquilinoActual.propiedad?.id);
         if (!yaIncluida) {
@@ -81,11 +74,9 @@ export function InquilinosPage() {
           return;
         }
       }
-      
       setPropiedadesDisponibles(disponibles);
     } catch (err) {
       console.error('Error al cargar propiedades:', err);
-      // En caso de error, intentar cargar todas las propiedades
       try {
         const todas = await getAllPropiedades();
         setPropiedadesDisponibles(todas.filter(p => p.estado === 'disponible' || p.id === inquilinoActual?.propiedad?.id));
@@ -142,7 +133,7 @@ export function InquilinosPage() {
         await createInquilino(formData);
       }
       handleCloseModal();
-      fetchInquilinos(); // Refresh the list
+      fetchInquilinos();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar inquilino');
     } finally {
@@ -157,7 +148,7 @@ export function InquilinosPage() {
 
     try {
       await deleteInquilino(id);
-      fetchInquilinos(); // Refresh the list
+      fetchInquilinos();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar inquilino');
     }
@@ -173,18 +164,44 @@ export function InquilinosPage() {
     }
   };
 
+  // ============================================
+  // FUNCIONES ACTUALIZADAS PARA MOSTRAR ESTADOS
+  // ============================================
+
+  // Get badge class based on contrato estado - Sincronizado con contratos
   const getContratoEstadoClass = (estado?: string) => {
     switch (estado) {
       case 'activo':
         return 'badge-success';
+      case 'en_proceso':
+        return 'badge-warning';
       case 'finalizado':
         return 'badge-danger';
       case 'sin_contrato':
-        return '';
       default:
-        return '';
+        return 'badge-secondary';
     }
   };
+
+  // Get label for contrato estado - Sincronizado con contratos
+  const getContratoEstadoLabel = (estado?: string) => {
+    switch (estado) {
+      case 'activo':
+        return 'Activo';
+      case 'en_proceso':
+        return 'En Proceso';
+      case 'finalizado':
+        return 'Finalizado';
+      case 'sin_contrato':
+        return 'Sin Contrato';
+      default:
+        return 'Sin Contrato';
+    }
+  };
+
+  // ============================================
+  // FIN DE FUNCIONES ACTUALIZADAS
+  // ============================================
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
@@ -192,7 +209,6 @@ export function InquilinosPage() {
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pages: number[] = [];
     const maxVisiblePages = 4;
@@ -212,18 +228,15 @@ export function InquilinosPage() {
   const startItem = currentPage * pageSize + 1;
   const endItem = Math.min((currentPage + 1) * pageSize, totalElements);
 
-  // Componente para manejar imágenes con fallback
   const TenantAvatar = ({ src, alt, size = 40 }: { src?: string; alt: string; size?: number }) => {
     const [imageError, setImageError] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
 
-    // Reset error state when src changes
     useEffect(() => {
       setImageError(false);
       setImageLoaded(false);
     }, [src]);
 
-    // Validar URL
     const isValidUrl = (url?: string): boolean => {
       if (!url || url.trim() === '') return false;
       try {
@@ -326,7 +339,6 @@ export function InquilinosPage() {
         </button>
       </div>
 
-      {/* Error message */}
       {error && (
         <div className="error-message" style={{
           backgroundColor: '#fee2e2',
@@ -355,7 +367,6 @@ export function InquilinosPage() {
         </div>
       )}
 
-      {/* Search */}
       <div className="table-toolbar">
         <div className="search-box">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -371,7 +382,6 @@ export function InquilinosPage() {
         </div>
       </div>
 
-      {/* Loading state */}
       {loading ? (
         <div className="loading-container" style={{
           display: 'flex',
@@ -397,7 +407,6 @@ export function InquilinosPage() {
         </div>
       ) : (
         <>
-          {/* Table */}
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -424,7 +433,7 @@ export function InquilinosPage() {
                             {inquilino.nombre} {inquilino.apellido}
                           </span>
                           <span className="tenant-subtitle" style={{ fontSize: '13px', color: '#6b7280' }}>
-                            {inquilino.propiedad?.nombre || 'Sin propiedad'}
+                            {inquilino.email}
                           </span>
                         </div>
                       </div>
@@ -448,11 +457,11 @@ export function InquilinosPage() {
                     </td>
                     <td>
                       {inquilino.contratoEstado === 'sin_contrato' || !inquilino.contratoEstado ? (
-                        <span className="no-contract" style={{ color: '#9ca3af' }}>No contrato</span>
+                        <span className="no-contract" style={{ color: '#9ca3af' }}>Sin contrato</span>
                       ) : (
                         <div className="contract-info">
                           <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
-                            {inquilino.contratoEstado === 'activo' ? 'Activo' : 'Finalizado'}
+                            {getContratoEstadoLabel(inquilino.contratoEstado)}
                           </span>
                           {inquilino.contratoFin && (
                             <span className="contract-date" style={{ 
@@ -461,7 +470,7 @@ export function InquilinosPage() {
                               color: '#6b7280',
                               marginTop: '4px' 
                             }}>
-                              {formatDate(inquilino.contratoFin)}
+                              Vence: {formatDate(inquilino.contratoFin)}
                             </span>
                           )}
                         </div>
@@ -508,7 +517,6 @@ export function InquilinosPage() {
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="table-pagination">
             <span className="pagination-info">
               {totalElements > 0 ? `${startItem}-${endItem} de ${totalElements}` : '0 resultados'}
@@ -542,7 +550,6 @@ export function InquilinosPage() {
         </>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -647,9 +654,8 @@ export function InquilinosPage() {
                     placeholder="https://ejemplo.com/imagen.jpg"
                   />
                   <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    Ingresa una URL válida de imagen (jpg, png, webp). Ej: https://i.imgur.com/xxxxx.jpg
+                    Ingresa una URL válida de imagen (jpg, png, webp).
                   </small>
-                  {/* Vista previa de la imagen */}
                   {formData.avatar && (
                     <div style={{ marginTop: '12px' }}>
                       <span style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>
@@ -673,7 +679,6 @@ export function InquilinosPage() {
         </div>
       )}
 
-      {/* CSS para animación de spinner */}
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
