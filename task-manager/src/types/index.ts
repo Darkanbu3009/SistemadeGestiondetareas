@@ -119,6 +119,7 @@ export interface PagoFormData {
   monto: number;
   fechaPago: string;
   comprobante?: string;
+  estado?: string;
 }
 
 export interface ContratoFormData {
