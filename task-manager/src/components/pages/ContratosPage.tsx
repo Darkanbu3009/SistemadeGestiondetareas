@@ -60,9 +60,11 @@ export function ContratosPage() {
   });
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pageSize = 10;
 
+  // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
@@ -73,16 +75,19 @@ export function ContratosPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Fetch contratos
   const fetchContratos = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      console.log('Fetching contratos...');
       const response = await getContratos(
         currentPage,
         pageSize,
         debouncedSearch || undefined,
         filterEstado || undefined
       );
+      console.log('Contratos received:', response);
       setContratos(response.content);
       setTotalPages(response.totalPages);
       setTotalElements(response.totalElements);
@@ -94,6 +99,7 @@ export function ContratosPage() {
     }
   }, [currentPage, debouncedSearch, filterEstado]);
 
+  // Fetch stats
   const fetchStats = useCallback(async () => {
     try {
       const [activos, porVencer, finalizados, sinFirmar] = await Promise.all([
@@ -108,17 +114,21 @@ export function ContratosPage() {
     }
   }, []);
 
+  // Fetch inquilinos and propiedades for dropdowns
   const fetchDropdownData = useCallback(async () => {
     try {
+      console.log('Fetching inquilinos and propiedades for dropdowns...');
       const [inquilinosData, propiedadesData] = await Promise.all([
         getAllInquilinos(),
         getAllPropiedades(),
       ]);
+      console.log('Inquilinos loaded:', inquilinosData);
+      console.log('Propiedades loaded:', propiedadesData);
       setInquilinos(inquilinosData);
       setPropiedades(propiedadesData);
     } catch (err) {
       console.error('Error fetching dropdown data:', err);
-      setError('Error al cargar inquilinos y propiedades.');
+      setError('Error al cargar inquilinos y propiedades. Verifique que haya registrado al menos un inquilino y una propiedad.');
     }
   }, []);
 
@@ -148,6 +158,7 @@ export function ContratosPage() {
       setFormData(emptyFormData);
     }
     setSelectedPdfFile(null);
+    setError(null);
     setShowModal(true);
   };
 
@@ -156,6 +167,7 @@ export function ContratosPage() {
     setEditingContrato(null);
     setFormData(emptyFormData);
     setSelectedPdfFile(null);
+    setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -190,33 +202,41 @@ export function ContratosPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
 
+    // Validate required fields
     if (!formData.inquilinoId || formData.inquilinoId === 0) {
       setError('Por favor selecciona un inquilino');
+      setSubmitting(false);
       return;
     }
 
     if (!formData.propiedadId || formData.propiedadId === 0) {
       setError('Por favor selecciona una propiedad');
+      setSubmitting(false);
       return;
     }
 
     if (!formData.fechaInicio) {
       setError('Por favor ingresa la fecha de inicio');
+      setSubmitting(false);
       return;
     }
 
     if (!formData.fechaFin) {
       setError('Por favor ingresa la fecha de fin');
+      setSubmitting(false);
       return;
     }
 
     if (!formData.rentaMensual || formData.rentaMensual <= 0) {
       setError('Por favor ingresa una renta mensual válida');
+      setSubmitting(false);
       return;
     }
 
     try {
+      console.log('Submitting contrato data:', formData);
       let savedContrato: Contrato;
 
       if (editingContrato) {
@@ -229,10 +249,12 @@ export function ContratosPage() {
       if (selectedPdfFile && savedContrato.id) {
         setUploadingPdf(true);
         try {
+          console.log('Uploading PDF for contrato:', savedContrato.id);
           await uploadContratoPdf(savedContrato.id, selectedPdfFile);
+          console.log('PDF uploaded successfully');
         } catch (uploadErr) {
           console.error('Error uploading PDF:', uploadErr);
-          setError('Contrato guardado pero hubo un error al subir el PDF');
+          // Don't fail the whole operation, just log the error
         } finally {
           setUploadingPdf(false);
         }
@@ -244,6 +266,8 @@ export function ContratosPage() {
     } catch (err) {
       console.error('Error saving contrato:', err);
       setError(err instanceof Error ? err.message : 'Error al guardar contrato');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -276,10 +300,13 @@ export function ContratosPage() {
         }
         try {
           setUploadingPdf(true);
+          console.log('Uploading PDF for existing contrato:', contratoId);
           await uploadContratoPdf(contratoId, file);
+          console.log('PDF uploaded successfully');
           fetchContratos();
           setError(null);
         } catch (err) {
+          console.error('Error uploading PDF:', err);
           setError(err instanceof Error ? err.message : 'Error al subir PDF');
         } finally {
           setUploadingPdf(false);
@@ -298,9 +325,11 @@ export function ContratosPage() {
   const getEstadoClass = (estado: string) => {
     switch (estado) {
       case 'activo':
+        return 'badge-success';
       case 'firmado':
         return 'badge-success';
       case 'por_vencer':
+        return 'badge-warning';
       case 'en_proceso':
         return 'badge-warning';
       case 'finalizado':
@@ -308,7 +337,7 @@ export function ContratosPage() {
       case 'sin_firmar':
         return 'badge-secondary';
       default:
-        return '';
+        return 'badge-secondary';
     }
   };
 
@@ -337,6 +366,7 @@ export function ContratosPage() {
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pages: number[] = [];
     const maxPagesToShow = 4;
@@ -353,6 +383,111 @@ export function ContratosPage() {
     return pages;
   };
 
+  // Tenant Avatar Component
+  const TenantAvatar = ({ src, alt, size = 40 }: { src?: string; alt: string; size?: number }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoaded, setImageLoaded] = useState(false);
+
+    useEffect(() => {
+      setImageError(false);
+      setImageLoaded(false);
+    }, [src]);
+
+    const isValidUrl = (url?: string): boolean => {
+      if (!url || url.trim() === '') return false;
+      try {
+        new URL(url);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const showFallback = !src || !isValidUrl(src) || imageError;
+
+    if (showFallback) {
+      return (
+        <div
+          className="tenant-avatar-fallback"
+          style={{
+            width: size,
+            height: size,
+            minWidth: size,
+            minHeight: size,
+            backgroundColor: '#e5e7eb',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#9ca3af',
+          }}
+        >
+          <svg
+            width={size * 0.5}
+            height={size * 0.5}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ position: 'relative', width: size, height: size, minWidth: size, minHeight: size }}>
+        {!imageLoaded && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: size,
+              height: size,
+              backgroundColor: '#e5e7eb',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: size * 0.4,
+                height: size * 0.4,
+                border: '2px solid #d1d5db',
+                borderTop: '2px solid #3b82f6',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+              }}
+            />
+          </div>
+        )}
+        <img
+          src={src}
+          alt={alt}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: '50%',
+            objectFit: 'cover',
+            display: imageLoaded ? 'block' : 'none',
+          }}
+          onLoad={() => setImageLoaded(true)}
+          onError={() => {
+            setImageError(true);
+            setImageLoaded(false);
+          }}
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="contratos-page">
       <div className="page-header">
@@ -362,10 +497,28 @@ export function ContratosPage() {
         </button>
       </div>
 
+      {/* Error Message */}
       {error && (
-        <div className="alert alert-error" style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '8px' }}>
-          {error}
-          <button onClick={() => setError(null)} style={{ marginLeft: '1rem', cursor: 'pointer' }}>×</button>
+        <div
+          className="alert alert-error"
+          style={{
+            marginBottom: '1rem',
+            padding: '1rem',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
+            borderRadius: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{ marginLeft: '1rem', cursor: 'pointer', background: 'none', border: 'none', fontSize: '18px', color: '#dc2626' }}
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -488,7 +641,12 @@ export function ContratosPage() {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando contratos...</div>
         ) : contratos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>No hay contratos registrados</div>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p>No hay contratos registrados</p>
+            <button className="btn btn-primary" onClick={() => handleOpenModal()} style={{ marginTop: '1rem' }}>
+              Crear primer contrato
+            </button>
+          </div>
         ) : (
           <table className="data-table">
             <thead>
@@ -507,20 +665,17 @@ export function ContratosPage() {
               {contratos.map((contrato) => (
                 <tr key={contrato.id}>
                   <td>
-                    <div className="tenant-cell">
-                      <img
-                        src={contrato.inquilino?.avatar || '/default-avatar.png'}
-                        alt={contrato.inquilino?.nombre}
-                        className="tenant-avatar"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/default-avatar.png';
-                        }}
+                    <div className="tenant-cell" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <TenantAvatar
+                        src={contrato.inquilino?.avatar}
+                        alt={`${contrato.inquilino?.nombre} ${contrato.inquilino?.apellido}`}
+                        size={40}
                       />
                       <div className="tenant-info">
-                        <span className="tenant-name">
+                        <span className="tenant-name" style={{ fontWeight: '500', display: 'block' }}>
                           {contrato.inquilino?.nombre} {contrato.inquilino?.apellido}
                         </span>
-                        <span className="tenant-subtitle">
+                        <span className="tenant-subtitle" style={{ fontSize: '13px', color: '#6b7280' }}>
                           {contrato.inquilino?.email}
                         </span>
                       </div>
@@ -528,9 +683,11 @@ export function ContratosPage() {
                   </td>
                   <td>
                     <div className="property-info-cell">
-                      <span className="property-name-text">{contrato.propiedad?.nombre}</span>
-                      <span className="property-address-text">
-                        {contrato.propiedad?.direccion}
+                      <span className="property-name-text" style={{ fontWeight: '500', display: 'block' }}>
+                        {contrato.propiedad?.nombre}
+                      </span>
+                      <span className="property-address-text" style={{ fontSize: '13px', color: '#6b7280' }}>
+                        {contrato.propiedad?.direccion}, {contrato.propiedad?.ciudad}
                       </span>
                     </div>
                   </td>
@@ -551,11 +708,12 @@ export function ContratosPage() {
                   <td>
                     <div className="document-actions">
                       {contrato.pdfUrl ? (
-                        
+                        <a
                           href={contrato.pdfUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-outline btn-sm"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -568,24 +726,39 @@ export function ContratosPage() {
                           className="btn btn-outline btn-sm"
                           onClick={() => handleUploadPdfForExisting(contrato.id)}
                           disabled={uploadingPdf}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
                           {uploadingPdf ? 'Subiendo...' : '+ Añadir PDF'}
                         </button>
                       )}
                     </div>
                   </td>
                   <td>
-                    <div className="action-buttons">
+                    <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
                       <button
                         className="btn btn-outline btn-sm"
                         onClick={() => handleOpenModal(contrato)}
                       >
-                        Ver
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        Editar
                       </button>
                       <button
                         className="btn btn-outline btn-sm btn-danger-text"
                         onClick={() => handleDelete(contrato.id)}
+                        style={{ color: '#dc2626', borderColor: '#dc2626' }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3,6 5,6 21,6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
                         Eliminar
                       </button>
                     </div>
@@ -646,19 +819,51 @@ export function ContratosPage() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
+                {/* Error Message in Modal */}
                 {error && (
-                  <div className="alert alert-error" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '8px', fontSize: '0.875rem' }}>
+                  <div
+                    className="alert alert-error"
+                    style={{
+                      marginBottom: '1rem',
+                      padding: '0.75rem',
+                      backgroundColor: '#fee2e2',
+                      color: '#dc2626',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                    }}
+                  >
                     {error}
                   </div>
                 )}
 
+                {/* Info message if no inquilinos or propiedades */}
                 {inquilinos.length === 0 && (
-                  <div className="alert alert-warning" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.875rem' }}>
+                  <div
+                    className="alert alert-warning"
+                    style={{
+                      marginBottom: '1rem',
+                      padding: '0.75rem',
+                      backgroundColor: '#fef3c7',
+                      color: '#92400e',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                    }}
+                  >
                     No hay inquilinos registrados. Por favor, registre al menos un inquilino primero.
                   </div>
                 )}
                 {propiedades.length === 0 && (
-                  <div className="alert alert-warning" style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.875rem' }}>
+                  <div
+                    className="alert alert-warning"
+                    style={{
+                      marginBottom: '1rem',
+                      padding: '0.75rem',
+                      backgroundColor: '#fef3c7',
+                      color: '#92400e',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                    }}
+                  >
                     No hay propiedades registradas. Por favor, registre al menos una propiedad primero.
                   </div>
                 )}
@@ -693,7 +898,7 @@ export function ContratosPage() {
                       <option value="">Seleccionar propiedad</option>
                       {propiedades.map((propiedad) => (
                         <option key={propiedad.id} value={propiedad.id}>
-                          {propiedad.nombre}
+                          {propiedad.nombre} - {propiedad.direccion}
                         </option>
                       ))}
                     </select>
@@ -768,8 +973,8 @@ export function ContratosPage() {
                     onChange={handleFileChange}
                   />
                   {selectedPdfFile && (
-                    <div style={{ marginTop: '8px', fontSize: '0.875rem', color: '#059669' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: '4px' }}>
+                    <div style={{ marginTop: '8px', fontSize: '0.875rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                         <polyline points="22 4 12 14.01 9 11.01" />
                       </svg>
@@ -778,7 +983,16 @@ export function ContratosPage() {
                   )}
                   {editingContrato?.pdfUrl && !selectedPdfFile && (
                     <div style={{ marginTop: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
-                      <a href={editingContrato.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                      <a
+                        href={editingContrato.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14,2 14,8 20,8" />
+                        </svg>
                         Ver documento actual
                       </a>
                     </div>
@@ -789,17 +1003,45 @@ export function ContratosPage() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={submitting || uploadingPdf}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={uploadingPdf}>
-                  {uploadingPdf ? 'Subiendo PDF...' : (editingContrato ? 'Guardar cambios' : 'Añadir contrato')}
+                <button type="submit" className="btn btn-primary" disabled={submitting || uploadingPdf}>
+                  {submitting || uploadingPdf ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        style={{ animation: 'spin 1s linear infinite' }}
+                      >
+                        <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                        <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="1" />
+                      </svg>
+                      {uploadingPdf ? 'Subiendo PDF...' : 'Guardando...'}
+                    </span>
+                  ) : editingContrato ? (
+                    'Guardar cambios'
+                  ) : (
+                    'Añadir contrato'
+                  )}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* CSS Animation for spinner */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
