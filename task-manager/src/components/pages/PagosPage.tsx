@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Pago, PagoFormData, Inquilino, Propiedad } from '../../types';
 import * as pagosService from '../../services/pagosService';
 import { getAllInquilinos } from '../../services/inquilinosService';
@@ -6,9 +6,17 @@ import { getAllPropiedades } from '../../services/propiedadService';
 
 interface PagosStats {
   ingresosMes: number;
-  ingresosVariacion: number;
   rentasPendientes: number;
   morosos: number;
+}
+
+interface PagoCreateData {
+  inquilinoId: number;
+  propiedadId: number;
+  monto: number;
+  fechaVencimiento: string;
+  fechaPago?: string;
+  comprobante?: string;
 }
 
 const emptyFormData: PagoFormData = {
@@ -25,58 +33,61 @@ export function PagosPage() {
   const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Modal states
   const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'register'>('create');
   const [selectedPago, setSelectedPago] = useState<Pago | null>(null);
   const [formData, setFormData] = useState<PagoFormData>(emptyFormData);
+  
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
+  // Month selector
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
-    const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    return `${months[now.getMonth()]} ${now.getFullYear()}`;
+    return now.getMonth() + 1; // 1-12
   });
+  const [selectedYear, setSelectedYear] = useState(() => {
+    const now = new Date();
+    return now.getFullYear();
+  });
+  
+  // Stats
   const [stats, setStats] = useState<PagosStats>({
     ingresosMes: 0,
-    ingresosVariacion: 0,
     rentasPendientes: 0,
     morosos: 0,
   });
+  
+  // Pagination
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
   const pageSize = 10;
 
-  // Load data on mount
+  // Debounce search
   useEffect(() => {
-    loadData();
-    loadInquilinos();
-    loadPropiedades();
-    loadStats();
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  // Reload pagos when search/filter changes
-  useEffect(() => {
-    loadPagos();
-  }, [searchTerm, filterEstado, currentPage]);
-
-  const loadData = async () => {
+  // Load pagos
+  const loadPagos = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      await loadPagos();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar los datos');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadPagos = async () => {
     try {
       const response = await pagosService.getPagos(
         currentPage,
         pageSize,
-        searchTerm || undefined,
+        debouncedSearch || undefined,
         filterEstado || undefined
       );
       setPagos(response.content);
@@ -85,68 +96,127 @@ export function PagosPage() {
     } catch (err) {
       console.error('Error loading pagos:', err);
       setError(err instanceof Error ? err.message : 'Error al cargar los pagos');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearch, filterEstado]);
 
-  const loadInquilinos = async () => {
+  // Load inquilinos
+  const loadInquilinos = useCallback(async () => {
     try {
       const data = await getAllInquilinos();
       setInquilinos(data);
     } catch (err) {
       console.error('Error loading inquilinos:', err);
     }
-  };
+  }, []);
 
-  const loadPropiedades = async () => {
+  // Load propiedades
+  const loadPropiedades = useCallback(async () => {
     try {
       const data = await getAllPropiedades();
       setPropiedades(data);
     } catch (err) {
       console.error('Error loading propiedades:', err);
     }
-  };
+  }, []);
 
-  const loadStats = async () => {
+  // Load stats
+  const loadStats = useCallback(async () => {
     try {
       const [ingresosData, morososCount] = await Promise.all([
-        pagosService.getIngresosMes(),
+        pagosService.getIngresosMes(selectedMonth, selectedYear),
         pagosService.getMorososCount(),
       ]);
 
       setStats({
         ingresosMes: ingresosData.ingresosMes || 0,
-        ingresosVariacion: 0, // TODO: Calculate variation when historical data is available
         rentasPendientes: ingresosData.rentasPendientes || 0,
-        morosos: morososCount,
+        morosos: morososCount || 0,
       });
     } catch (err) {
       console.error('Error loading stats:', err);
     }
-  };
+  }, [selectedMonth, selectedYear]);
 
-  const handleOpenModal = (pago?: Pago) => {
-    if (pago) {
-      setSelectedPago(pago);
-      setFormData({
-        inquilinoId: pago.inquilinoId || pago.inquilino?.id || 0,
-        propiedadId: pago.propiedadId || pago.propiedad?.id || 0,
-        monto: pago.monto,
-        fechaPago: new Date().toISOString().split('T')[0],
-        comprobante: '',
-      });
-    } else {
-      setSelectedPago(null);
-      setFormData(emptyFormData);
-    }
+  // Initial load
+  useEffect(() => {
+    loadInquilinos();
+    loadPropiedades();
+  }, [loadInquilinos, loadPropiedades]);
+
+  // Load pagos when filters change
+  useEffect(() => {
+    loadPagos();
+  }, [loadPagos]);
+
+  // Load stats when month changes
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  // Open modal for creating new pago
+  const handleOpenCreateModal = () => {
+    setModalMode('create');
+    setSelectedPago(null);
+    setFormData({
+      ...emptyFormData,
+      fechaPago: new Date().toISOString().split('T')[0],
+    });
+    setError(null);
     setShowModal(true);
   };
 
+  // Open modal for editing pago
+  const handleOpenEditModal = (pago: Pago) => {
+    setModalMode('edit');
+    setSelectedPago(pago);
+    setFormData({
+      inquilinoId: pago.inquilino?.id || 0,
+      propiedadId: pago.propiedad?.id || 0,
+      monto: pago.monto,
+      fechaPago: pago.fechaVencimiento || new Date().toISOString().split('T')[0],
+      comprobante: pago.comprobante || '',
+    });
+    setError(null);
+    setShowModal(true);
+  };
+
+  // Open modal for registering payment
+  const handleOpenRegisterModal = (pago: Pago) => {
+    setModalMode('register');
+    setSelectedPago(pago);
+    setFormData({
+      inquilinoId: pago.inquilino?.id || 0,
+      propiedadId: pago.propiedad?.id || 0,
+      monto: pago.monto,
+      fechaPago: new Date().toISOString().split('T')[0],
+      comprobante: '',
+    });
+    setError(null);
+    setShowModal(true);
+  };
+
+  // Open view modal
+  const handleOpenViewModal = (pago: Pago) => {
+    setSelectedPago(pago);
+    setShowViewModal(true);
+  };
+
+  // Close modals
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedPago(null);
     setFormData(emptyFormData);
+    setError(null);
   };
 
+  const handleCloseViewModal = () => {
+    setShowViewModal(false);
+    setSelectedPago(null);
+  };
+
+  // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -156,44 +226,54 @@ export function PagosPage() {
         : value,
     }));
 
-    // Auto-fill monto when selecting inquilino based on their propiedad
+    // Auto-fill monto and propiedad when selecting inquilino
     if (name === 'inquilinoId' && value) {
       const inquilino = inquilinos.find((i) => i.id === parseInt(value));
-      if (inquilino?.propiedadId) {
-        const propiedad = propiedades.find((p) => p.id === inquilino.propiedadId);
-        if (propiedad) {
-          setFormData((prev) => ({
-            ...prev,
-            inquilinoId: parseInt(value),
-            propiedadId: propiedad.id,
-            monto: propiedad.rentaMensual,
-          }));
-        }
+      if (inquilino?.propiedad) {
+        const propiedad = inquilino.propiedad;
+        setFormData((prev) => ({
+          ...prev,
+          inquilinoId: parseInt(value),
+          propiedadId: propiedad.id,
+          monto: propiedad.rentaMensual,
+        }));
       }
     }
   };
 
+  // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
 
     try {
-      if (selectedPago) {
-        // Register payment for existing pago
+      if (modalMode === 'register' && selectedPago) {
+        // Register payment
         await pagosService.registrarPago(selectedPago.id, {
           fechaPago: formData.fechaPago,
           comprobante: formData.comprobante || undefined,
         });
+      } else if (modalMode === 'edit' && selectedPago) {
+        // Update pago
+        await pagosService.updatePago(selectedPago.id, {
+          inquilinoId: formData.inquilinoId,
+          propiedadId: formData.propiedadId,
+          monto: formData.monto,
+          fechaVencimiento: formData.fechaPago,
+          comprobante: formData.comprobante || undefined,
+        });
       } else {
-        // Create new payment record
-        await pagosService.createPago({
+        // Create new pago
+        const createData: PagoCreateData = {
           inquilinoId: formData.inquilinoId,
           propiedadId: formData.propiedadId,
           monto: formData.monto,
           fechaVencimiento: formData.fechaPago,
           fechaPago: formData.fechaPago,
           comprobante: formData.comprobante || undefined,
-        });
+        };
+        await pagosService.createPago(createData);
       }
 
       handleCloseModal();
@@ -201,17 +281,25 @@ export function PagosPage() {
       loadStats();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar el pago');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const filteredPagos = pagos.filter((p) => {
-    const matchesSearch =
-      `${p.inquilino?.nombre || ''} ${p.inquilino?.apellido || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.propiedad?.nombre || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = !filterEstado || p.estado === filterEstado;
-    return matchesSearch && matchesFilter;
-  });
+  // Handle delete
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Estás seguro de eliminar este pago?')) return;
 
+    try {
+      await pagosService.deletePago(id);
+      loadPagos();
+      loadStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar el pago');
+    }
+  };
+
+  // Get estado badge class
   const getEstadoClass = (estado: string) => {
     switch (estado) {
       case 'pagado':
@@ -221,62 +309,185 @@ export function PagosPage() {
       case 'atrasado':
         return 'badge-danger';
       default:
-        return '';
+        return 'badge-secondary';
     }
   };
 
+  // Get estado label
+  const getEstadoLabel = (estado: string) => {
+    switch (estado) {
+      case 'pagado':
+        return 'Pagado';
+      case 'pendiente':
+        return 'Pendiente';
+      case 'atrasado':
+        return 'Atrasado';
+      default:
+        return estado;
+    }
+  };
+
+  // Format date
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
+    if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  if (loading) {
-    return (
-      <div className="pagos-page">
-        <div className="loading-container">
-          <p>Cargando pagos...</p>
+  // Generate month options
+  const getMonthOptions = () => {
+    const months = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    const options = [];
+    const currentYear = new Date().getFullYear();
+    
+    for (let year = currentYear; year >= currentYear - 2; year--) {
+      for (let month = 12; month >= 1; month--) {
+        if (year === currentYear && month > new Date().getMonth() + 1) continue;
+        options.push({
+          value: `${month}-${year}`,
+          label: `${months[month - 1]} ${year}`,
+          month,
+          year,
+        });
+      }
+    }
+    return options;
+  };
+
+  // Handle month change
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const [month, year] = e.target.value.split('-').map(Number);
+    setSelectedMonth(month);
+    setSelectedYear(year);
+  };
+
+  // Get page numbers
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const maxPagesToShow = 4;
+    let startPage = Math.max(0, currentPage - Math.floor(maxPagesToShow / 2));
+    const endPage = Math.min(totalPages - 1, startPage + maxPagesToShow - 1);
+    if (endPage - startPage < maxPagesToShow - 1) {
+      startPage = Math.max(0, endPage - maxPagesToShow + 1);
+    }
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  // Tenant Avatar Component
+  const TenantAvatar = ({ src, alt, size = 40 }: { src?: string; alt: string; size?: number }) => {
+    const [imageError, setImageError] = useState(false);
+
+    const isValidUrl = (url?: string): boolean => {
+      if (!url || url.trim() === '') return false;
+      try {
+        new URL(url);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    if (!src || !isValidUrl(src) || imageError) {
+      return (
+        <div
+          style={{
+            width: size,
+            height: size,
+            minWidth: size,
+            minHeight: size,
+            backgroundColor: '#e5e7eb',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#9ca3af',
+          }}
+        >
+          <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
         </div>
-      </div>
+      );
+    }
+
+    return (
+      <img
+        src={src}
+        alt={alt}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: '50%',
+          objectFit: 'cover',
+        }}
+        onError={() => setImageError(true)}
+      />
     );
-  }
+  };
 
   return (
     <div className="pagos-page">
       <div className="page-header">
         <h1 className="page-title">Pagos</h1>
-        <div className="header-actions">
-          <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-            <span>+</span> Registrar pago
-          </button>
-        </div>
+        <button className="btn btn-primary" onClick={handleOpenCreateModal}>
+          <span>+</span> Registrar pago
+        </button>
       </div>
 
+      {/* Error Message */}
       {error && (
-        <div className="error-message">
-          <p>{error}</p>
-          <button onClick={() => setError(null)}>Cerrar</button>
+        <div
+          style={{
+            marginBottom: '1rem',
+            padding: '1rem',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
+            borderRadius: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
+          >
+            ×
+          </button>
         </div>
       )}
 
       {/* Stats Cards */}
       <div className="stats-grid stats-4">
-        <div className="stat-card">
+        {/* Ingresos del mes */}
+        <div className="stat-card stat-card-bordered">
           <div className="stat-header">
             <span className="stat-label">Ingresos del mes</span>
+            <span className="stat-icon" style={{ color: '#10b981' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="1" x2="12" y2="23" />
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </span>
           </div>
           <div className="stat-content">
             <span className="stat-value">${stats.ingresosMes.toLocaleString()}</span>
-            {stats.ingresosVariacion > 0 && (
-              <span className="stat-change positive">+{stats.ingresosVariacion}%</span>
-            )}
           </div>
         </div>
 
-        <div className="stat-card">
+        {/* Rentas pendientes */}
+        <div className="stat-card stat-card-bordered stat-card-warning">
           <div className="stat-header">
             <span className="stat-label">Rentas pendientes</span>
-            <span className="stat-icon pending">
+            <span className="stat-icon" style={{ color: '#3b82f6' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12,6 12,12 16,14" />
@@ -288,27 +499,47 @@ export function PagosPage() {
           </div>
         </div>
 
-        <div className="stat-card">
+        {/* Morosos */}
+        <div className="stat-card stat-card-bordered">
           <div className="stat-header">
             <span className="stat-label">Morosos</span>
-            {stats.morosos > 0 && <span className="morosos-badge">{stats.morosos}</span>}
+            <span className="stat-icon" style={{ color: '#ef4444' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </span>
           </div>
           <div className="stat-content">
             <span className="stat-value">{stats.morosos}</span>
           </div>
         </div>
 
-        <div className="stat-card month-selector">
-          <select
-            className="month-select"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-          >
-            <option value="Enero 2026">Enero 2026</option>
-            <option value="Diciembre 2025">Diciembre 2025</option>
-            <option value="Noviembre 2025">Noviembre 2025</option>
-            <option value="Octubre 2025">Octubre 2025</option>
-          </select>
+        {/* Month Selector */}
+        <div className="stat-card stat-card-bordered">
+          <div className="stat-header">
+            <select
+              className="month-select"
+              value={`${selectedMonth}-${selectedYear}`}
+              onChange={handleMonthChange}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              {getMonthOptions().map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -318,7 +549,10 @@ export function PagosPage() {
           <select
             className="filter-select"
             value={filterEstado}
-            onChange={(e) => setFilterEstado(e.target.value)}
+            onChange={(e) => {
+              setFilterEstado(e.target.value);
+              setCurrentPage(0);
+            }}
           >
             <option value="">Todos</option>
             <option value="pagado">Pagado</option>
@@ -362,142 +596,298 @@ export function PagosPage() {
 
       {/* Table */}
       <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Inquilino</th>
-              <th>Propiedad</th>
-              <th>Estado</th>
-              <th>Monto</th>
-              <th>Fecha</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPagos.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando pagos...</div>
+        ) : pagos.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p>No hay pagos registrados</p>
+            <button className="btn btn-primary" onClick={handleOpenCreateModal} style={{ marginTop: '1rem' }}>
+              Registrar primer pago
+            </button>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay pagos registrados
-                </td>
+                <th>Inquilino</th>
+                <th>Propiedad</th>
+                <th>Estado</th>
+                <th>Monto</th>
+                <th>Fecha Vencimiento</th>
+                <th>Fecha Pago</th>
+                <th>Acciones</th>
               </tr>
-            ) : (
-              filteredPagos.map((pago) => (
+            </thead>
+            <tbody>
+              {pagos.map((pago) => (
                 <tr key={pago.id}>
                   <td>
-                    <div className="tenant-cell">
-                      <img
-                        src={pago.inquilino?.avatar || '/default-avatar.png'}
-                        alt={pago.inquilino?.nombre}
-                        className="tenant-avatar"
+                    <div className="tenant-cell" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <TenantAvatar
+                        src={pago.inquilino?.avatar}
+                        alt={`${pago.inquilino?.nombre} ${pago.inquilino?.apellido}`}
+                        size={40}
                       />
                       <div className="tenant-info">
-                        <span className="tenant-name">
+                        <span className="tenant-name" style={{ fontWeight: '500', display: 'block' }}>
                           {pago.inquilino?.nombre} {pago.inquilino?.apellido}
                         </span>
-                        <span className="tenant-subtitle">
-                          {pago.inquilino?.nombre} {pago.inquilino?.apellido}
+                        <span className="tenant-subtitle" style={{ fontSize: '13px', color: '#6b7280' }}>
+                          {pago.inquilino?.email}
                         </span>
                       </div>
                     </div>
                   </td>
                   <td>
                     <div className="property-info-cell">
-                      <span className="property-name-text">{pago.propiedad?.nombre}</span>
-                      <span className="property-address-text">
-                        {pago.propiedad?.direccion}, {pago.propiedad?.ciudad}, {pago.propiedad?.pais}
+                      <span className="property-name-text" style={{ fontWeight: '500', display: 'block' }}>
+                        {pago.propiedad?.nombre}
+                      </span>
+                      <span className="property-address-text" style={{ fontSize: '13px', color: '#6b7280' }}>
+                        {pago.propiedad?.direccion}, {pago.propiedad?.ciudad}
                       </span>
                     </div>
                   </td>
                   <td>
                     <span className={`badge ${getEstadoClass(pago.estado)}`}>
-                      {pago.estado === 'pagado' ? 'Pagado' :
-                       pago.estado === 'pendiente' ? 'Pendiente' : 'Atrasado'}
+                      {getEstadoLabel(pago.estado)}
                     </span>
-                  </td>
-                  <td>
-                    <span className="amount-value">${pago.monto.toLocaleString()}</span>
                     {pago.diasAtrasado && pago.diasAtrasado > 0 && pago.estado !== 'pagado' && (
-                      <span className="days-late-text">{pago.diasAtrasado} dias atrasada</span>
+                      <span style={{ display: 'block', fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>
+                        {pago.diasAtrasado} días atrasado
+                      </span>
                     )}
                   </td>
                   <td>
-                    <span className="date-text">
-                      {formatDate(pago.fechaPago || pago.fechaVencimiento)}
-                    </span>
+                    <span style={{ fontWeight: '600' }}>${pago.monto.toLocaleString()}</span>
                   </td>
                   <td>
-                    <div className="action-buttons">
-                      {pago.estado === 'pagado' ? (
-                        <>
-                          <button className="btn btn-outline btn-sm">
-                            Ver
-                          </button>
-                          {pago.comprobante && (
-                            <button className="btn btn-outline btn-sm">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                <circle cx="8.5" cy="8.5" r="1.5" />
-                                <polyline points="21,15 16,10 5,21" />
-                              </svg>
-                              Ver
-                            </button>
-                          )}
-                        </>
-                      ) : (
+                    <span>{formatDate(pago.fechaVencimiento)}</span>
+                  </td>
+                  <td>
+                    <span>{pago.fechaPago ? formatDate(pago.fechaPago) : '-'}</span>
+                  </td>
+                  <td>
+                    <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
+                      {/* Ver button */}
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleOpenViewModal(pago)}
+                        title="Ver detalles"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        Ver
+                      </button>
+
+                      {/* Editar button */}
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleOpenEditModal(pago)}
+                        title="Editar pago"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        Editar
+                      </button>
+
+                      {/* Registrar pago button (only for pending/late) */}
+                      {pago.estado !== 'pagado' && (
                         <button
-                          className="btn btn-outline btn-sm btn-register"
-                          onClick={() => handleOpenModal(pago)}
+                          className="btn btn-outline btn-sm"
+                          onClick={() => handleOpenRegisterModal(pago)}
+                          style={{ color: '#10b981', borderColor: '#10b981' }}
+                          title="Registrar pago"
                         >
-                          Registrar pago
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                          </svg>
+                          Pagar
                         </button>
                       )}
+
+                      {/* Eliminar button */}
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleDelete(pago.id)}
+                        style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                        title="Eliminar"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3,6 5,6 21,6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Pagination */}
-      <div className="table-pagination">
-        <span className="pagination-info">
-          {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, totalElements)} de {totalElements}
-        </span>
-        <div className="pagination-controls">
-          <button
-            className="pagination-btn"
-            disabled={currentPage === 0}
-            onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
-          >
-            &lt;
-          </button>
-          {Array.from({ length: Math.min(totalPages, 4) }, (_, i) => (
+      {totalPages > 0 && (
+        <div className="table-pagination">
+          <span className="pagination-info">
+            {totalElements > 0 ? `${currentPage * pageSize + 1}-${Math.min((currentPage + 1) * pageSize, totalElements)} de ${totalElements}` : '0 resultados'}
+          </span>
+          <div className="pagination-controls">
             <button
-              key={i}
-              className={`pagination-btn ${currentPage === i ? 'active' : ''}`}
-              onClick={() => setCurrentPage(i)}
+              className="pagination-btn"
+              disabled={currentPage === 0}
+              onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
             >
-              {i + 1}
+              &lt;
             </button>
-          ))}
-          <button
-            className="pagination-btn"
-            disabled={currentPage >= totalPages - 1}
-            onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
-          >
-            &gt;
-          </button>
+            {getPageNumbers().map((pageNum) => (
+              <button
+                key={pageNum}
+                className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
+                onClick={() => setCurrentPage(pageNum)}
+              >
+                {pageNum + 1}
+              </button>
+            ))}
+            <button
+              className="pagination-btn"
+              disabled={currentPage >= totalPages - 1}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
+            >
+              &gt;
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Modal */}
+      {/* View Modal */}
+      {showViewModal && selectedPago && (
+        <div className="modal-overlay" onClick={handleCloseViewModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Detalles del Pago</h2>
+              <button className="modal-close" onClick={handleCloseViewModal}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'grid', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}>
+                  <TenantAvatar
+                    src={selectedPago.inquilino?.avatar}
+                    alt={`${selectedPago.inquilino?.nombre} ${selectedPago.inquilino?.apellido}`}
+                    size={60}
+                  />
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '18px' }}>
+                      {selectedPago.inquilino?.nombre} {selectedPago.inquilino?.apellido}
+                    </h3>
+                    <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '14px' }}>
+                      {selectedPago.inquilino?.email}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Propiedad</label>
+                    <p style={{ margin: '4px 0 0', fontWeight: '500' }}>{selectedPago.propiedad?.nombre}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#6b7280' }}>
+                      {selectedPago.propiedad?.direccion}
+                    </p>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Estado</label>
+                    <p style={{ margin: '4px 0 0' }}>
+                      <span className={`badge ${getEstadoClass(selectedPago.estado)}`}>
+                        {getEstadoLabel(selectedPago.estado)}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Monto</label>
+                    <p style={{ margin: '4px 0 0', fontWeight: '600', fontSize: '20px', color: '#10b981' }}>
+                      ${selectedPago.monto.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Fecha Vencimiento</label>
+                    <p style={{ margin: '4px 0 0', fontWeight: '500' }}>{formatDate(selectedPago.fechaVencimiento)}</p>
+                  </div>
+                </div>
+
+                {selectedPago.fechaPago && (
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Fecha de Pago</label>
+                    <p style={{ margin: '4px 0 0', fontWeight: '500' }}>{formatDate(selectedPago.fechaPago)}</p>
+                  </div>
+                )}
+
+                {selectedPago.comprobante && (
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Comprobante</label>
+                    <p style={{ margin: '4px 0 0' }}>
+                      <a href={selectedPago.comprobante} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                        Ver comprobante
+                      </a>
+                    </p>
+                  </div>
+                )}
+
+                {selectedPago.diasAtrasado && selectedPago.diasAtrasado > 0 && selectedPago.estado !== 'pagado' && (
+                  <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
+                    <p style={{ margin: 0, color: '#dc2626', fontWeight: '500' }}>
+                      ⚠️ Este pago tiene {selectedPago.diasAtrasado} días de atraso
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={handleCloseViewModal}>
+                Cerrar
+              </button>
+              {selectedPago.estado !== 'pagado' && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    handleCloseViewModal();
+                    handleOpenRegisterModal(selectedPago);
+                  }}
+                >
+                  Registrar Pago
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit/Register Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{selectedPago ? 'Registrar pago' : 'Nuevo pago'}</h2>
+              <h2>
+                {modalMode === 'register'
+                  ? 'Registrar Pago'
+                  : modalMode === 'edit'
+                  ? 'Editar Pago'
+                  : 'Nuevo Pago'}
+              </h2>
               <button className="modal-close" onClick={handleCloseModal}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -507,107 +897,145 @@ export function PagosPage() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
-                {selectedPago && (
-                  <div className="pago-info-summary">
-                    <div className="summary-item">
-                      <span className="summary-label">Inquilino:</span>
-                      <span className="summary-value">
-                        {selectedPago.inquilino?.nombre} {selectedPago.inquilino?.apellido}
-                      </span>
-                    </div>
-                    <div className="summary-item">
-                      <span className="summary-label">Propiedad:</span>
-                      <span className="summary-value">{selectedPago.propiedad?.nombre}</span>
-                    </div>
-                    <div className="summary-item">
-                      <span className="summary-label">Monto a pagar:</span>
-                      <span className="summary-value">${selectedPago.monto.toLocaleString()}</span>
+                {error && (
+                  <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '8px', fontSize: '0.875rem' }}>
+                    {error}
+                  </div>
+                )}
+
+                {/* Summary for register mode */}
+                {modalMode === 'register' && selectedPago && (
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#6b7280' }}>Inquilino:</span>
+                        <span style={{ fontWeight: '500' }}>
+                          {selectedPago.inquilino?.nombre} {selectedPago.inquilino?.apellido}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#6b7280' }}>Propiedad:</span>
+                        <span style={{ fontWeight: '500' }}>{selectedPago.propiedad?.nombre}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#6b7280' }}>Monto a pagar:</span>
+                        <span style={{ fontWeight: '600', color: '#10b981', fontSize: '18px' }}>
+                          ${selectedPago.monto.toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {!selectedPago && (
+                {/* Full form for create/edit mode */}
+                {(modalMode === 'create' || modalMode === 'edit') && (
                   <>
-                    <div className="form-group">
-                      <label htmlFor="inquilinoId">Inquilino</label>
-                      <select
-                        id="inquilinoId"
-                        name="inquilinoId"
-                        value={formData.inquilinoId}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="">Seleccionar inquilino</option>
-                        {inquilinos.map((inquilino) => (
-                          <option key={inquilino.id} value={inquilino.id}>
-                            {inquilino.nombre} {inquilino.apellido}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="inquilinoId">Inquilino</label>
+                        <select
+                          id="inquilinoId"
+                          name="inquilinoId"
+                          value={formData.inquilinoId}
+                          onChange={handleInputChange}
+                          required
+                          disabled={modalMode === 'edit'}
+                        >
+                          <option value="">Seleccionar inquilino</option>
+                          {inquilinos.map((inquilino) => (
+                            <option key={inquilino.id} value={inquilino.id}>
+                              {inquilino.nombre} {inquilino.apellido}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="propiedadId">Propiedad</label>
+                        <select
+                          id="propiedadId"
+                          name="propiedadId"
+                          value={formData.propiedadId}
+                          onChange={handleInputChange}
+                          required
+                          disabled={modalMode === 'edit'}
+                        >
+                          <option value="">Seleccionar propiedad</option>
+                          {propiedades.map((propiedad) => (
+                            <option key={propiedad.id} value={propiedad.id}>
+                              {propiedad.nombre} - ${propiedad.rentaMensual?.toLocaleString()}/mes
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
-                    <div className="form-group">
-                      <label htmlFor="propiedadId">Propiedad</label>
-                      <select
-                        id="propiedadId"
-                        name="propiedadId"
-                        value={formData.propiedadId}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="">Seleccionar propiedad</option>
-                        {propiedades.map((propiedad) => (
-                          <option key={propiedad.id} value={propiedad.id}>
-                            {propiedad.nombre} - ${propiedad.rentaMensual}/mes
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="monto">Monto ($)</label>
-                      <input
-                        type="number"
-                        id="monto"
-                        name="monto"
-                        value={formData.monto}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="0.01"
-                        required
-                      />
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="monto">Monto ($)</label>
+                        <input
+                          type="number"
+                          id="monto"
+                          name="monto"
+                          value={formData.monto}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.01"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="fechaPago">
+                          {modalMode === 'edit' ? 'Fecha de Vencimiento' : 'Fecha de Pago'}
+                        </label>
+                        <input
+                          type="date"
+                          id="fechaPago"
+                          name="fechaPago"
+                          value={formData.fechaPago}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
                     </div>
                   </>
                 )}
 
-                <div className="form-group">
-                  <label htmlFor="fechaPago">Fecha de pago</label>
-                  <input
-                    type="date"
-                    id="fechaPago"
-                    name="fechaPago"
-                    value={formData.fechaPago}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+                {/* Date and comprobante for register mode */}
+                {modalMode === 'register' && (
+                  <div className="form-group">
+                    <label htmlFor="fechaPago">Fecha de Pago</label>
+                    <input
+                      type="date"
+                      id="fechaPago"
+                      name="fechaPago"
+                      value={formData.fechaPago}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="form-group">
-                  <label htmlFor="comprobante">Comprobante (opcional)</label>
+                  <label htmlFor="comprobante">URL del Comprobante (opcional)</label>
                   <input
-                    type="file"
+                    type="text"
                     id="comprobante"
                     name="comprobante"
-                    accept="image/*,.pdf"
+                    value={formData.comprobante}
+                    onChange={handleInputChange}
+                    placeholder="https://ejemplo.com/comprobante.pdf"
                   />
+                  <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                    Ingresa una URL al comprobante de pago (imagen o PDF)
+                  </small>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
+                <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={submitting}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Registrar pago
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Guardando...' : modalMode === 'register' ? 'Registrar Pago' : modalMode === 'edit' ? 'Guardar Cambios' : 'Crear Pago'}
                 </button>
               </div>
             </form>
