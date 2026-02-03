@@ -25,6 +25,7 @@ const emptyFormData: PagoFormData = {
   monto: 0,
   fechaPago: new Date().toISOString().split('T')[0],
   comprobante: '',
+  estado: 'pagado',
 };
 
 export function PagosPage() {
@@ -177,6 +178,7 @@ export function PagosPage() {
       monto: pago.monto,
       fechaPago: pago.fechaVencimiento || new Date().toISOString().split('T')[0],
       comprobante: pago.comprobante || '',
+      estado: pago.estado || 'pendiente',
     });
     setError(null);
     setShowModal(true);
@@ -192,6 +194,7 @@ export function PagosPage() {
       monto: pago.monto,
       fechaPago: new Date().toISOString().split('T')[0],
       comprobante: '',
+      estado: 'pagado',
     });
     setError(null);
     setShowModal(true);
@@ -249,11 +252,23 @@ export function PagosPage() {
 
     try {
       if (modalMode === 'register' && selectedPago) {
-        // Register payment
-        await pagosService.registrarPago(selectedPago.id, {
-          fechaPago: formData.fechaPago,
-          comprobante: formData.comprobante || undefined,
-        });
+        // Register payment with estado
+        if (formData.estado === 'pagado') {
+          // If marking as paid, use registrarPago endpoint
+          await pagosService.registrarPago(selectedPago.id, {
+            fechaPago: formData.fechaPago,
+            comprobante: formData.comprobante || undefined,
+          });
+        } else {
+          // If keeping as pending/atrasado, update the pago with new estado
+          await pagosService.updatePago(selectedPago.id, {
+            inquilinoId: selectedPago.inquilino?.id || 0,
+            propiedadId: selectedPago.propiedad?.id || 0,
+            monto: selectedPago.monto,
+            fechaVencimiento: selectedPago.fechaVencimiento || formData.fechaPago,
+            comprobante: formData.comprobante || undefined,
+          });
+        }
       } else if (modalMode === 'edit' && selectedPago) {
         // Update pago
         await pagosService.updatePago(selectedPago.id, {
@@ -652,7 +667,7 @@ export function PagosPage() {
                     <span className={`badge ${getEstadoClass(pago.estado)}`}>
                       {getEstadoLabel(pago.estado)}
                     </span>
-                    {pago.diasAtrasado && pago.diasAtrasado > 0 && pago.estado !== 'pagado' && (
+                    {pago.estado === 'atrasado' && pago.diasAtrasado && pago.diasAtrasado > 0 && (
                       <span style={{ display: 'block', fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>
                         {pago.diasAtrasado} días atrasado
                       </span>
@@ -997,22 +1012,57 @@ export function PagosPage() {
                         />
                       </div>
                     </div>
+
+                    {modalMode === 'edit' && (
+                      <div className="form-group">
+                        <label htmlFor="estado">Estado del Pago</label>
+                        <select
+                          id="estado"
+                          name="estado"
+                          value={formData.estado || 'pendiente'}
+                          onChange={handleInputChange}
+                          required
+                        >
+                          <option value="pagado">Pagado</option>
+                          <option value="pendiente">Pendiente</option>
+                          <option value="atrasado">Atrasado / No Pagado</option>
+                        </select>
+                      </div>
+                    )}
                   </>
                 )}
 
                 {/* Date and comprobante for register mode */}
                 {modalMode === 'register' && (
-                  <div className="form-group">
-                    <label htmlFor="fechaPago">Fecha de Pago</label>
-                    <input
-                      type="date"
-                      id="fechaPago"
-                      name="fechaPago"
-                      value={formData.fechaPago}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
+                  <>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="fechaPago">Fecha de Pago</label>
+                        <input
+                          type="date"
+                          id="fechaPago"
+                          name="fechaPago"
+                          value={formData.fechaPago}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="estado">Estado del Pago</label>
+                        <select
+                          id="estado"
+                          name="estado"
+                          value={formData.estado || 'pagado'}
+                          onChange={handleInputChange}
+                          required
+                        >
+                          <option value="pagado">Pagado</option>
+                          <option value="pendiente">Pendiente</option>
+                          <option value="atrasado">Atrasado / No Pagado</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <div className="form-group">
