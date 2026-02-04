@@ -30,6 +30,7 @@ const emptyFormData: PagoFormData = {
 
 export function PagosPage() {
   const [pagos, setPagos] = useState<Pago[]>([]);
+  const [allPagos, setAllPagos] = useState<Pago[]>([]); // All pagos for client-side filtering
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
   const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,9 @@ export function PagosPage() {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
+  // View mode
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   
   // Month selector
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -67,40 +70,22 @@ export function PagosPage() {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalElements, setTotalElements] = useState(0);
   const pageSize = 10;
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-      setCurrentPage(0);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Load pagos
-  const loadPagos = useCallback(async () => {
+  // Load all pagos
+  const loadAllPagos = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await pagosService.getPagos(
-        currentPage,
-        pageSize,
-        debouncedSearch || undefined,
-        filterEstado || undefined
-      );
-      setPagos(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
+      const data = await pagosService.getAllPagos();
+      setAllPagos(data);
     } catch (err) {
       console.error('Error loading pagos:', err);
       setError(err instanceof Error ? err.message : 'Error al cargar los pagos');
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearch, filterEstado]);
+  }, []);
 
   // Load inquilinos
   const loadInquilinos = useCallback(async () => {
@@ -142,19 +127,90 @@ export function PagosPage() {
 
   // Initial load
   useEffect(() => {
+    loadAllPagos();
     loadInquilinos();
     loadPropiedades();
-  }, [loadInquilinos, loadPropiedades]);
-
-  // Load pagos when filters change
-  useEffect(() => {
-    loadPagos();
-  }, [loadPagos]);
+  }, [loadAllPagos, loadInquilinos, loadPropiedades]);
 
   // Load stats when month changes
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  // Filter pagos based on search, estado, and month/year
+  useEffect(() => {
+    let filtered = [...allPagos];
+
+    // Filter by search term
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter((pago) => {
+        const inquilinoName = `${pago.inquilino?.nombre || ''} ${pago.inquilino?.apellido || ''}`.toLowerCase();
+        const propiedadName = (pago.propiedad?.nombre || '').toLowerCase();
+        return inquilinoName.includes(search) || propiedadName.includes(search);
+      });
+    }
+
+    // Filter by estado
+    if (filterEstado) {
+      filtered = filtered.filter((pago) => pago.estado === filterEstado);
+    }
+
+    // Filter by month and year
+    filtered = filtered.filter((pago) => {
+      const fechaPago = pago.fechaPago ? new Date(pago.fechaPago) : null;
+      const fechaVencimiento = pago.fechaVencimiento ? new Date(pago.fechaVencimiento) : null;
+      const fecha = fechaPago || fechaVencimiento;
+      
+      if (!fecha) return false;
+      
+      const pagoMonth = fecha.getMonth() + 1;
+      const pagoYear = fecha.getFullYear();
+      
+      return pagoMonth === selectedMonth && pagoYear === selectedYear;
+    });
+
+    setPagos(filtered);
+    setCurrentPage(0);
+  }, [allPagos, searchTerm, filterEstado, selectedMonth, selectedYear]);
+
+  // Calculate stats from filtered data
+  useEffect(() => {
+    // Calculate stats based on filtered pagos for the selected month
+    const filteredByMonth = allPagos.filter((pago) => {
+      const fechaPago = pago.fechaPago ? new Date(pago.fechaPago) : null;
+      const fechaVencimiento = pago.fechaVencimiento ? new Date(pago.fechaVencimiento) : null;
+      const fecha = fechaPago || fechaVencimiento;
+      
+      if (!fecha) return false;
+      
+      const pagoMonth = fecha.getMonth() + 1;
+      const pagoYear = fecha.getFullYear();
+      
+      return pagoMonth === selectedMonth && pagoYear === selectedYear;
+    });
+
+    const ingresosMes = filteredByMonth
+      .filter((p) => p.estado === 'pagado')
+      .reduce((sum, p) => sum + (p.monto || 0), 0);
+
+    const rentasPendientes = allPagos
+      .filter((p) => p.estado === 'pendiente' || p.estado === 'atrasado')
+      .reduce((sum, p) => sum + (p.monto || 0), 0);
+
+    const morosos = allPagos.filter((p) => p.estado === 'atrasado').length;
+
+    setStats({
+      ingresosMes,
+      rentasPendientes,
+      morosos,
+    });
+  }, [allPagos, selectedMonth, selectedYear]);
+
+  // Get paginated data
+  const paginatedPagos = pagos.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+  const totalPages = Math.ceil(pagos.length / pageSize);
+  const totalElements = pagos.length;
 
   // Open modal for creating new pago
   const handleOpenCreateModal = () => {
@@ -254,13 +310,11 @@ export function PagosPage() {
       if (modalMode === 'register' && selectedPago) {
         // Register payment with estado
         if (formData.estado === 'pagado') {
-          // If marking as paid, use registrarPago endpoint
           await pagosService.registrarPago(selectedPago.id, {
             fechaPago: formData.fechaPago,
             comprobante: formData.comprobante || undefined,
           });
         } else {
-          // If keeping as pending/atrasado, update the pago with new estado
           await pagosService.updatePago(selectedPago.id, {
             inquilinoId: selectedPago.inquilino?.id || 0,
             propiedadId: selectedPago.propiedad?.id || 0,
@@ -270,7 +324,6 @@ export function PagosPage() {
           });
         }
       } else if (modalMode === 'edit' && selectedPago) {
-        // Update pago
         await pagosService.updatePago(selectedPago.id, {
           inquilinoId: formData.inquilinoId,
           propiedadId: formData.propiedadId,
@@ -279,7 +332,6 @@ export function PagosPage() {
           comprobante: formData.comprobante || undefined,
         });
       } else {
-        // Create new pago
         const createData: PagoCreateData = {
           inquilinoId: formData.inquilinoId,
           propiedadId: formData.propiedadId,
@@ -292,8 +344,7 @@ export function PagosPage() {
       }
 
       handleCloseModal();
-      loadPagos();
-      loadStats();
+      loadAllPagos();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar el pago');
     } finally {
@@ -307,8 +358,7 @@ export function PagosPage() {
 
     try {
       await pagosService.deletePago(id);
-      loadPagos();
-      loadStats();
+      loadAllPagos();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar el pago');
     }
@@ -588,7 +638,11 @@ export function PagosPage() {
           </div>
         </div>
         <div className="view-toggle">
-          <button className="view-btn active">
+          <button 
+            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+            onClick={() => setViewMode('grid')}
+            title="Vista de cuadrícula"
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" />
               <rect x="14" y="3" width="7" height="7" />
@@ -596,7 +650,11 @@ export function PagosPage() {
               <rect x="3" y="14" width="7" height="7" />
             </svg>
           </button>
-          <button className="view-btn">
+          <button 
+            className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+            onClick={() => setViewMode('list')}
+            title="Vista de lista"
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="8" y1="6" x2="21" y2="6" />
               <line x1="8" y1="12" x2="21" y2="12" />
@@ -609,18 +667,19 @@ export function PagosPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="table-container">
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando pagos...</div>
-        ) : pagos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <p>No hay pagos registrados</p>
-            <button className="btn btn-primary" onClick={handleOpenCreateModal} style={{ marginTop: '1rem' }}>
-              Registrar primer pago
-            </button>
-          </div>
-        ) : (
+      {/* Content */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando pagos...</div>
+      ) : paginatedPagos.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <p>No hay pagos para el período seleccionado</p>
+          <button className="btn btn-primary" onClick={handleOpenCreateModal} style={{ marginTop: '1rem' }}>
+            Registrar primer pago
+          </button>
+        </div>
+      ) : viewMode === 'list' ? (
+        /* Table View */
+        <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
@@ -634,7 +693,7 @@ export function PagosPage() {
               </tr>
             </thead>
             <tbody>
-              {pagos.map((pago) => (
+              {paginatedPagos.map((pago) => (
                 <tr key={pago.id}>
                   <td>
                     <div className="tenant-cell" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -684,7 +743,6 @@ export function PagosPage() {
                   </td>
                   <td>
                     <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
-                      {/* Ver button */}
                       <button
                         className="btn btn-outline btn-sm"
                         onClick={() => handleOpenViewModal(pago)}
@@ -696,8 +754,6 @@ export function PagosPage() {
                         </svg>
                         Ver
                       </button>
-
-                      {/* Editar button */}
                       <button
                         className="btn btn-outline btn-sm"
                         onClick={() => handleOpenEditModal(pago)}
@@ -709,8 +765,6 @@ export function PagosPage() {
                         </svg>
                         Editar
                       </button>
-
-                      {/* Registrar pago button (only for pending/late) */}
                       {pago.estado !== 'pagado' && (
                         <button
                           className="btn btn-outline btn-sm"
@@ -725,8 +779,6 @@ export function PagosPage() {
                           Pagar
                         </button>
                       )}
-
-                      {/* Eliminar button */}
                       <button
                         className="btn btn-outline btn-sm"
                         onClick={() => handleDelete(pago.id)}
@@ -744,8 +796,120 @@ export function PagosPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Grid View */
+        <div 
+          className="pagos-grid" 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+            gap: '1rem',
+            marginTop: '1rem'
+          }}
+        >
+          {paginatedPagos.map((pago) => (
+            <div 
+              key={pago.id} 
+              className="pago-card"
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '1.25rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <TenantAvatar
+                    src={pago.inquilino?.avatar}
+                    alt={`${pago.inquilino?.nombre} ${pago.inquilino?.apellido}`}
+                    size={48}
+                  />
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>
+                      {pago.inquilino?.nombre} {pago.inquilino?.apellido}
+                    </h4>
+                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#6b7280' }}>
+                      {pago.propiedad?.nombre}
+                    </p>
+                  </div>
+                </div>
+                <span className={`badge ${getEstadoClass(pago.estado)}`}>
+                  {getEstadoLabel(pago.estado)}
+                </span>
+              </div>
+
+              {/* Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1rem' }}>
+                <div>
+                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Monto</span>
+                  <span style={{ fontSize: '18px', fontWeight: '600', color: '#10b981' }}>
+                    ${pago.monto.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Vencimiento</span>
+                  <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                    {formatDate(pago.fechaVencimiento)}
+                  </span>
+                </div>
+              </div>
+
+              {pago.fechaPago && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Fecha de Pago</span>
+                  <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                    {formatDate(pago.fechaPago)}
+                  </span>
+                </div>
+              )}
+
+              {pago.estado === 'atrasado' && pago.diasAtrasado && pago.diasAtrasado > 0 && (
+                <div style={{ 
+                  padding: '8px 12px', 
+                  backgroundColor: '#fef2f2', 
+                  borderRadius: '6px', 
+                  marginBottom: '1rem',
+                  fontSize: '13px',
+                  color: '#dc2626'
+                }}>
+                  ⚠️ {pago.diasAtrasado} días de atraso
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => handleOpenViewModal(pago)}
+                  style={{ flex: 1 }}
+                >
+                  Ver
+                </button>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => handleOpenEditModal(pago)}
+                  style={{ flex: 1 }}
+                >
+                  Editar
+                </button>
+                {pago.estado !== 'pagado' && (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => handleOpenRegisterModal(pago)}
+                    style={{ flex: 1 }}
+                  >
+                    Pagar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 0 && (
@@ -861,7 +1025,7 @@ export function PagosPage() {
                   </div>
                 )}
 
-                {selectedPago.diasAtrasado && selectedPago.diasAtrasado > 0 && selectedPago.estado !== 'pagado' && (
+                {selectedPago.estado === 'atrasado' && selectedPago.diasAtrasado && selectedPago.diasAtrasado > 0 && (
                   <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
                     <p style={{ margin: 0, color: '#dc2626', fontWeight: '500' }}>
                       ⚠️ Este pago tiene {selectedPago.diasAtrasado} días de atraso
@@ -1032,7 +1196,7 @@ export function PagosPage() {
                   </>
                 )}
 
-                {/* Date and comprobante for register mode */}
+                {/* Date and estado for register mode */}
                 {modalMode === 'register' && (
                   <>
                     <div className="form-row">
