@@ -93,6 +93,9 @@ public class PagoController {
         pago.setFechaVencimiento(request.getFechaVencimiento());
         pago.setFechaPago(request.getFechaPago());
         pago.setComprobante(request.getComprobante());
+        if (request.getEstado() != null) {
+            pago.setEstado(request.getEstado());
+        }
 
         Pago created = service.create(request.getInquilinoId(), request.getPropiedadId(), pago, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -106,6 +109,8 @@ public class PagoController {
         pago.setMonto(request.getMonto());
         pago.setFechaVencimiento(request.getFechaVencimiento());
         pago.setComprobante(request.getComprobante());
+        pago.setEstado(request.getEstado());
+        pago.setFechaPago(request.getFechaPago());
 
         Pago updated = service.update(id, pago, user);
         return ResponseEntity.ok(updated);
