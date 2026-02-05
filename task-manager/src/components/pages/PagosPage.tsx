@@ -17,6 +17,7 @@ interface PagoCreateData {
   fechaVencimiento: string;
   fechaPago?: string;
   comprobante?: string;
+  estado?: string;
 }
 
 const emptyFormData: PagoFormData = {
@@ -219,6 +220,7 @@ export function PagosPage() {
     setFormData({
       ...emptyFormData,
       fechaPago: new Date().toISOString().split('T')[0],
+      estado: 'pagado',
     });
     setError(null);
     setShowModal(true);
@@ -315,12 +317,14 @@ export function PagosPage() {
             comprobante: formData.comprobante || undefined,
           });
         } else {
+          // Si el estado no es pagado, usar update para cambiar solo el estado
           await pagosService.updatePago(selectedPago.id, {
             inquilinoId: selectedPago.inquilino?.id || 0,
             propiedadId: selectedPago.propiedad?.id || 0,
             monto: selectedPago.monto,
             fechaVencimiento: selectedPago.fechaVencimiento || formData.fechaPago,
             comprobante: formData.comprobante || undefined,
+            estado: formData.estado,
           });
         }
       } else if (modalMode === 'edit' && selectedPago) {
@@ -330,15 +334,18 @@ export function PagosPage() {
           monto: formData.monto,
           fechaVencimiento: formData.fechaPago,
           comprobante: formData.comprobante || undefined,
+          estado: formData.estado,
         });
       } else {
+        // Create new pago
         const createData: PagoCreateData = {
           inquilinoId: formData.inquilinoId,
           propiedadId: formData.propiedadId,
           monto: formData.monto,
           fechaVencimiento: formData.fechaPago,
-          fechaPago: formData.fechaPago,
+          fechaPago: formData.estado === 'pagado' ? formData.fechaPago : undefined,
           comprobante: formData.comprobante || undefined,
+          estado: formData.estado,
         };
         await pagosService.createPago(createData);
       }
@@ -1177,22 +1184,21 @@ export function PagosPage() {
                       </div>
                     </div>
 
-                    {modalMode === 'edit' && (
-                      <div className="form-group">
-                        <label htmlFor="estado">Estado del Pago</label>
-                        <select
-                          id="estado"
-                          name="estado"
-                          value={formData.estado || 'pendiente'}
-                          onChange={handleInputChange}
-                          required
-                        >
-                          <option value="pagado">Pagado</option>
-                          <option value="pendiente">Pendiente</option>
-                          <option value="atrasado">Atrasado / No Pagado</option>
-                        </select>
-                      </div>
-                    )}
+                    {/* Estado del Pago - Ahora disponible en CREATE y EDIT */}
+                    <div className="form-group">
+                      <label htmlFor="estado">Estado del Pago</label>
+                      <select
+                        id="estado"
+                        name="estado"
+                        value={formData.estado || 'pendiente'}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="pagado">Pagado</option>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="atrasado">Atrasado / No Pagado</option>
+                      </select>
+                    </div>
                   </>
                 )}
 
