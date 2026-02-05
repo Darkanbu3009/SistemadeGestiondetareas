@@ -55,13 +55,15 @@ public class PagoService {
         pago.setPropiedad(propiedad);
         pago.setUser(user);
 
-        // Auto-set estado based on dates
-        if (pago.getFechaPago() != null) {
-            pago.setEstado("pagado");
-        } else if (pago.getFechaVencimiento() != null && LocalDate.now().isAfter(pago.getFechaVencimiento())) {
-            pago.setEstado("atrasado");
-        } else {
-            pago.setEstado("pendiente");
+        // Auto-set estado based on dates if not explicitly set
+        if (pago.getEstado() == null || pago.getEstado().isEmpty()) {
+            if (pago.getFechaPago() != null) {
+                pago.setEstado("pagado");
+            } else if (pago.getFechaVencimiento() != null && LocalDate.now().isAfter(pago.getFechaVencimiento())) {
+                pago.setEstado("atrasado");
+            } else {
+                pago.setEstado("pendiente");
+            }
         }
 
         return repository.save(pago);
@@ -78,6 +80,27 @@ public class PagoService {
         }
         if (pagoDetails.getComprobante() != null) {
             pago.setComprobante(pagoDetails.getComprobante());
+        }
+        
+        // Actualizar estado
+        if (pagoDetails.getEstado() != null && !pagoDetails.getEstado().isEmpty()) {
+            pago.setEstado(pagoDetails.getEstado());
+            
+            // Si el estado es "pagado" y no tiene fecha de pago, asignar la fecha actual
+            if ("pagado".equals(pagoDetails.getEstado()) && pago.getFechaPago() == null) {
+                pago.setFechaPago(LocalDate.now());
+            }
+            
+            // Si el estado no es "pagado", limpiar la fecha de pago
+            if (!"pagado".equals(pagoDetails.getEstado())) {
+                pago.setFechaPago(null);
+            }
+        }
+        
+        // Si se proporciona fecha de pago explícitamente, usarla
+        if (pagoDetails.getFechaPago() != null) {
+            pago.setFechaPago(pagoDetails.getFechaPago());
+            pago.setEstado("pagado");
         }
 
         return repository.save(pago);
