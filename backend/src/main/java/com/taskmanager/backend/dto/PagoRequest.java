@@ -26,6 +26,9 @@ public class PagoRequest {
     @Size(max = 500, message = "La URL del comprobante no puede exceder 500 caracteres")
     private String comprobante;
 
+    @Size(max = 20, message = "El estado no puede exceder 20 caracteres")
+    private String estado;
+
     // Getters and Setters
     public Long getInquilinoId() {
         return inquilinoId;
@@ -73,5 +76,13 @@ public class PagoRequest {
 
     public void setComprobante(String comprobante) {
         this.comprobante = comprobante;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
     }
 }
