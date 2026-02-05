@@ -41,6 +41,7 @@ interface CreatePagoData {
   fechaVencimiento: string;
   fechaPago?: string;
   comprobante?: string;
+  estado?: string;
 }
 
 // Interface for registering a payment
