@@ -54,7 +54,7 @@ export function ContratosPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [stats, setStats] = useState<ContratoStats>({
     activos: 0,
     porVencer: 0,
