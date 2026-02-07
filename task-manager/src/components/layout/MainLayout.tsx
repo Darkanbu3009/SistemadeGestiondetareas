@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import type { PageType } from './Sidebar';
 import { Navbar } from './Navbar';
-import type { User } from '../../types';
+import type { User, ProfilePageType } from '../../types';
 
 interface MainLayoutProps {
   children: React.ReactNode;
   currentPage: PageType;
   onNavigate: (page: PageType) => void;
   onLogout: () => void;
-  onUserAvatarClick?: () => void;
+  onNavigateProfile?: (page: ProfilePageType) => void;
   user?: User | null;
 }
 
-export function MainLayout({ children, currentPage, onNavigate, onLogout, onUserAvatarClick, user }: MainLayoutProps) {
+export function MainLayout({ children, currentPage, onNavigate, onLogout, onNavigateProfile, user }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const toggleSidebar = () => {
@@ -30,7 +30,12 @@ export function MainLayout({ children, currentPage, onNavigate, onLogout, onUser
         user={user}
       />
       <div className="main-wrapper">
-        <Navbar onToggleSidebar={toggleSidebar} onUserAvatarClick={onUserAvatarClick} user={user} />
+        <Navbar
+          onToggleSidebar={toggleSidebar}
+          onNavigateProfile={onNavigateProfile}
+          onLogout={onLogout}
+          user={user}
+        />
         <main className="main-content">
           {children}
         </main>
