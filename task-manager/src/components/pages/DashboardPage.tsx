@@ -79,7 +79,6 @@ export function DashboardPage() {
       {/* Error Message */}
       {error && (
         <div
-          className="alert alert-error"
           style={{
             marginBottom: '1rem',
             padding: '1rem',
@@ -109,6 +108,12 @@ export function DashboardPage() {
         <div className="stat-card">
           <div className="stat-header">
             <span className="stat-label">Ingresos del mes</span>
+            <span className="stat-icon" style={{ color: '#10b981' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="1" x2="12" y2="23" />
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </span>
           </div>
           <div className="stat-content">
             <span className="stat-value">${stats.ingresosMes.toLocaleString()}</span>
@@ -288,7 +293,7 @@ export function DashboardPage() {
                     />
                   ) : (
                     <div style={{
-                      width: '100%', height: '200px', backgroundColor: '#f3f4f6',
+                      width: '100%', height: '100%', backgroundColor: '#f3f4f6',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af',
                     }}>
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
