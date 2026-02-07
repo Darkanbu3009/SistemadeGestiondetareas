@@ -99,9 +99,9 @@ function App() {
     setShowProfile(false);
   };
 
-  const handleUserAvatarClick = () => {
+  const handleNavigateToProfile = (page: ProfilePageType) => {
     setShowProfile(true);
-    setCurrentProfilePage('perfil');
+    setCurrentProfilePage(page);
   };
 
   const handleGoBackToDashboard = () => {
@@ -172,6 +172,7 @@ function App() {
         onNavigateProfile={handleNavigateProfile}
         onToggleSidebar={() => {}}
         onGoBack={handleGoBackToDashboard}
+        onLogout={handleLogout}
         user={user}
       >
         {renderProfilePage()}
@@ -202,7 +203,7 @@ function App() {
       currentPage={currentPage}
       onNavigate={handleNavigate}
       onLogout={handleLogout}
-      onUserAvatarClick={handleUserAvatarClick}
+      onNavigateProfile={handleNavigateToProfile}
       user={user}
     >
       {renderPage()}
