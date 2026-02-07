@@ -1515,6 +1515,10 @@ body {
   align-items: center;
 }
 
+.profile-sidebar .logo-text {
+  color: #1e293b;
+}
+
 .profile-sidebar-nav {
   flex: 1;
   padding: 8px 12px;
