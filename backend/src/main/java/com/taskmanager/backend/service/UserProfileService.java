@@ -8,10 +8,14 @@ import com.taskmanager.backend.model.User;
 import com.taskmanager.backend.model.UserPreference;
 import com.taskmanager.backend.model.UserSession;
 import com.taskmanager.backend.model.UserSubscription;
+import com.taskmanager.backend.model.BillingHistory;
+import com.taskmanager.backend.repository.BillingHistoryRepository;
 import com.taskmanager.backend.repository.UserPreferenceRepository;
 import com.taskmanager.backend.repository.UserRepository;
 import com.taskmanager.backend.repository.UserSessionRepository;
 import com.taskmanager.backend.repository.UserSubscriptionRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +30,7 @@ public class UserProfileService {
     private final UserPreferenceRepository preferenceRepository;
     private final UserSessionRepository sessionRepository;
     private final UserSubscriptionRepository subscriptionRepository;
+    private final BillingHistoryRepository billingHistoryRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UserProfileService(
@@ -33,11 +38,13 @@ public class UserProfileService {
             UserPreferenceRepository preferenceRepository,
             UserSessionRepository sessionRepository,
             UserSubscriptionRepository subscriptionRepository,
+            BillingHistoryRepository billingHistoryRepository,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.preferenceRepository = preferenceRepository;
         this.sessionRepository = sessionRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.billingHistoryRepository = billingHistoryRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -85,6 +92,10 @@ public class UserProfileService {
         if (request.getNotificacionesCorreo() != null) pref.setNotificacionesCorreo(request.getNotificacionesCorreo());
         if (request.getNotificacionesSistema() != null) pref.setNotificacionesSistema(request.getNotificacionesSistema());
         if (request.getElementosPorPagina() != null) pref.setElementosPorPagina(request.getElementosPorPagina());
+        if (request.getRecordatoriosPagos() != null) pref.setRecordatoriosPagos(request.getRecordatoriosPagos());
+        if (request.getAvisosVencimiento() != null) pref.setAvisosVencimiento(request.getAvisosVencimiento());
+        if (request.getConfirmacionesReservacion() != null) pref.setConfirmacionesReservacion(request.getConfirmacionesReservacion());
+        if (request.getResumenMensual() != null) pref.setResumenMensual(request.getResumenMensual());
         return preferenceRepository.save(pref);
     }
 
@@ -144,6 +155,22 @@ public class UserProfileService {
         sub.setEstado("cancelada");
         sub.setProximoPago(null);
         return subscriptionRepository.save(sub);
+    }
+
+    // ---- Billing History ----
+    public Page<BillingHistory> getBillingHistory(User user, String search, LocalDate after, Pageable pageable) {
+        if (search != null && !search.isEmpty() && after != null) {
+            return billingHistoryRepository.searchByUserAndDateAfter(user, search, after, pageable);
+        } else if (search != null && !search.isEmpty()) {
+            return billingHistoryRepository.searchByUser(user, search, pageable);
+        } else if (after != null) {
+            return billingHistoryRepository.findByUserAndFechaAfterOrderByFechaDesc(user, after, pageable);
+        }
+        return billingHistoryRepository.findByUserOrderByFechaDesc(user, pageable);
+    }
+
+    public long countBillingHistory(User user) {
+        return billingHistoryRepository.countByUser(user);
     }
 
     // ---- Account ----

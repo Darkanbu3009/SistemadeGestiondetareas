@@ -1,5 +1,5 @@
 import api from './api';
-import type { UserProfileData, UserPreference, UserSession, UserSubscription } from '../types';
+import type { UserProfileData, UserPreference, UserSession, UserSubscription, BillingRecord } from '../types';
 
 // ---- Profile ----
 export const getProfile = () =>
@@ -31,6 +31,10 @@ export const updatePreferences = (data: {
   notificacionesCorreo?: boolean;
   notificacionesSistema?: boolean;
   elementosPorPagina?: number;
+  recordatoriosPagos?: boolean;
+  avisosVencimiento?: boolean;
+  confirmacionesReservacion?: boolean;
+  resumenMensual?: boolean;
 }) => api.put<UserPreference>('/perfil/preferencias', data);
 
 // ---- Sessions ----
@@ -57,6 +61,14 @@ export const updateSubscription = (data: {
 
 export const cancelSubscription = () =>
   api.put<{ message: string }>('/perfil/suscripcion/cancelar');
+
+// ---- Billing History ----
+export const getBillingHistory = (params: {
+  page?: number;
+  size?: number;
+  search?: string;
+  filter?: string;
+}) => api.get<{ content: BillingRecord[]; totalElements: number; totalPages: number; number: number }>('/perfil/historial', { params });
 
 // ---- Account ----
 export const deleteAccount = () =>

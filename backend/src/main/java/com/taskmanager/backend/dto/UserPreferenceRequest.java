@@ -7,6 +7,10 @@ public class UserPreferenceRequest {
     private Boolean notificacionesCorreo;
     private Boolean notificacionesSistema;
     private Integer elementosPorPagina;
+    private Boolean recordatoriosPagos;
+    private Boolean avisosVencimiento;
+    private Boolean confirmacionesReservacion;
+    private Boolean resumenMensual;
 
     // Getters and Setters
     public String getIdioma() { return idioma; }
@@ -23,4 +27,16 @@ public class UserPreferenceRequest {
 
     public Integer getElementosPorPagina() { return elementosPorPagina; }
     public void setElementosPorPagina(Integer elementosPorPagina) { this.elementosPorPagina = elementosPorPagina; }
+
+    public Boolean getRecordatoriosPagos() { return recordatoriosPagos; }
+    public void setRecordatoriosPagos(Boolean recordatoriosPagos) { this.recordatoriosPagos = recordatoriosPagos; }
+
+    public Boolean getAvisosVencimiento() { return avisosVencimiento; }
+    public void setAvisosVencimiento(Boolean avisosVencimiento) { this.avisosVencimiento = avisosVencimiento; }
+
+    public Boolean getConfirmacionesReservacion() { return confirmacionesReservacion; }
+    public void setConfirmacionesReservacion(Boolean confirmacionesReservacion) { this.confirmacionesReservacion = confirmacionesReservacion; }
+
+    public Boolean getResumenMensual() { return resumenMensual; }
+    public void setResumenMensual(Boolean resumenMensual) { this.resumenMensual = resumenMensual; }
 }
