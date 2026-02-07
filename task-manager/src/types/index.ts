@@ -27,6 +27,19 @@ export interface UserPreference {
   notificacionesCorreo: boolean;
   notificacionesSistema: boolean;
   elementosPorPagina: number;
+  recordatoriosPagos: boolean;
+  avisosVencimiento: boolean;
+  confirmacionesReservacion: boolean;
+  resumenMensual: boolean;
+}
+
+export interface BillingRecord {
+  id: number;
+  fecha: string;
+  descripcion: string;
+  monto: number;
+  moneda: string;
+  facturaUrl?: string;
 }
 
 export interface UserSession {

@@ -2394,3 +2394,330 @@ body {
     align-items: flex-start;
   }
 }
+
+/* ============================================
+   Historial Page Styles
+   ============================================ */
+
+.historial-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.historial-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-secondary);
+}
+
+.historial-search svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.historial-search input {
+  border: none;
+  outline: none;
+  background: none;
+  width: 100%;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.historial-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.historial-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.historial-filter-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
+.historial-filter-btn {
+  padding: 6px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: white;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.historial-filter-btn:hover {
+  border-color: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.historial-filter-btn-active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.historial-filter-btn-active:hover {
+  background: var(--primary-dark);
+  color: white;
+}
+
+.historial-date-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  background: white;
+  cursor: pointer;
+}
+
+.historial-table-wrapper {
+  overflow-x: auto;
+}
+
+.historial-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.historial-table thead th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.historial-table tbody td {
+  padding: 16px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.historial-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.historial-table tbody tr:hover {
+  background: var(--bg-secondary);
+}
+
+.historial-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.historial-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.historial-pagination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.historial-pagination-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.historial-pagination-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.historial-page-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: white;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.historial-page-btn:hover:not(:disabled) {
+  border-color: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.historial-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.historial-page-btn-active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+/* ============================================
+   Notificaciones Page Styles
+   ============================================ */
+
+.notif-section-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  padding: 0;
+}
+
+.notif-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.notif-item-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.notif-item-title {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.notif-item-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Notification sessions */
+.notif-sessions-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-session-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.notif-session-item:last-child {
+  border-bottom: none;
+}
+
+.notif-session-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.notif-session-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 180px;
+}
+
+.notif-session-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.notif-session-type {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.notif-session-actions {
+  min-width: 120px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Responsive for new pages */
+@media (max-width: 768px) {
+  .historial-toolbar {
+    flex-direction: column;
+  }
+
+  .historial-filters {
+    flex-wrap: wrap;
+  }
+
+  .notif-session-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .notif-session-right {
+    align-items: flex-start;
+  }
+
+  .notif-session-actions {
+    justify-content: flex-start;
+  }
+}

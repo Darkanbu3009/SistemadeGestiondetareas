@@ -30,6 +30,18 @@ public class UserPreference {
     @Column(columnDefinition = "integer default 10")
     private Integer elementosPorPagina = 10;
 
+    @Column(columnDefinition = "boolean default true")
+    private Boolean recordatoriosPagos = true;
+
+    @Column(columnDefinition = "boolean default true")
+    private Boolean avisosVencimiento = true;
+
+    @Column(columnDefinition = "boolean default true")
+    private Boolean confirmacionesReservacion = true;
+
+    @Column(columnDefinition = "boolean default true")
+    private Boolean resumenMensual = true;
+
     private LocalDateTime updatedAt;
 
     @PrePersist
@@ -65,6 +77,18 @@ public class UserPreference {
 
     public Integer getElementosPorPagina() { return elementosPorPagina; }
     public void setElementosPorPagina(Integer elementosPorPagina) { this.elementosPorPagina = elementosPorPagina; }
+
+    public Boolean getRecordatoriosPagos() { return recordatoriosPagos; }
+    public void setRecordatoriosPagos(Boolean recordatoriosPagos) { this.recordatoriosPagos = recordatoriosPagos; }
+
+    public Boolean getAvisosVencimiento() { return avisosVencimiento; }
+    public void setAvisosVencimiento(Boolean avisosVencimiento) { this.avisosVencimiento = avisosVencimiento; }
+
+    public Boolean getConfirmacionesReservacion() { return confirmacionesReservacion; }
+    public void setConfirmacionesReservacion(Boolean confirmacionesReservacion) { this.confirmacionesReservacion = confirmacionesReservacion; }
+
+    public Boolean getResumenMensual() { return resumenMensual; }
+    public void setResumenMensual(Boolean resumenMensual) { this.resumenMensual = resumenMensual; }
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }

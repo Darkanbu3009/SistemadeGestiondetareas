@@ -8,14 +8,19 @@ import com.taskmanager.backend.model.User;
 import com.taskmanager.backend.model.UserPreference;
 import com.taskmanager.backend.model.UserSession;
 import com.taskmanager.backend.model.UserSubscription;
+import com.taskmanager.backend.model.BillingHistory;
 import com.taskmanager.backend.repository.UserRepository;
 import com.taskmanager.backend.service.UserProfileService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -154,6 +159,28 @@ public class UserProfileController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Suscripción cancelada");
         return ResponseEntity.ok(response);
+    }
+
+    // ---- Billing History ----
+    @GetMapping("/historial")
+    public ResponseEntity<Page<BillingHistory>> getBillingHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String filter) {
+        User user = getCurrentUser();
+        Pageable pageable = PageRequest.of(page, size);
+
+        LocalDate after = null;
+        if ("30d".equals(filter)) {
+            after = LocalDate.now().minusDays(30);
+        } else if ("12m".equals(filter)) {
+            after = LocalDate.now().minusMonths(12);
+        } else if (filter != null && filter.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            after = LocalDate.parse(filter);
+        }
+
+        return ResponseEntity.ok(service.getBillingHistory(user, search, after, pageable));
     }
 
     // ---- Account ----
