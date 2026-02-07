@@ -37,7 +37,7 @@ export function PropiedadesPage() {
   const [formData, setFormData] = useState<PropiedadFormData>(emptyFormData);
   const [searchTerm, setSearchTerm] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   // Load properties from API and fetch associated tenants
   const loadPropiedades = useCallback(async () => {

@@ -18,6 +18,8 @@ const emptyFormData: InquilinoFormData = {
   propiedadId: undefined,
 };
 
+type ViewMode = 'grid' | 'list';
+
 export function InquilinosPage() {
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
   const [propiedadesDisponibles, setPropiedadesDisponibles] = useState<Propiedad[]>([]);
@@ -28,6 +30,7 @@ export function InquilinosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -380,6 +383,34 @@ export function InquilinosPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <div className="view-toggle">
+          <button
+            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+            onClick={() => setViewMode('grid')}
+            title="Vista en cuadrícula"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+            </svg>
+          </button>
+          <button
+            className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+            onClick={() => setViewMode('list')}
+            title="Vista en lista"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -407,115 +438,237 @@ export function InquilinosPage() {
         </div>
       ) : (
         <>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Inquilino</th>
-                  <th>Propiedad</th>
-                  <th>Telefono</th>
-                  <th>Contrato</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inquilinos.map((inquilino) => (
-                  <tr key={inquilino.id}>
-                    <td>
-                      <div className="tenant-cell" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <TenantAvatar 
-                          src={inquilino.avatar} 
-                          alt={`${inquilino.nombre} ${inquilino.apellido}`}
-                          size={40}
-                        />
-                        <div className="tenant-info">
-                          <span className="tenant-name" style={{ fontWeight: '500', display: 'block' }}>
-                            {inquilino.nombre} {inquilino.apellido}
-                          </span>
-                          <span className="tenant-subtitle" style={{ fontSize: '13px', color: '#6b7280' }}>
-                            {inquilino.email}
-                          </span>
-                        </div>
+          {/* Grid View */}
+          {viewMode === 'grid' ? (
+            <div className="inquilinos-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '24px',
+              marginTop: '24px'
+            }}>
+              {inquilinos.map((inquilino) => (
+                <div key={inquilino.id} className="inquilino-card" style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  border: '1px solid #e5e7eb',
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  transition: 'box-shadow 0.2s ease',
+                }}>
+                  {/* Header: Avatar + Name + Contract Status */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <TenantAvatar
+                        src={inquilino.avatar}
+                        alt={`${inquilino.nombre} ${inquilino.apellido}`}
+                        size={48}
+                      />
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>
+                          {inquilino.nombre} {inquilino.apellido}
+                        </h4>
+                        <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#6b7280' }}>
+                          {inquilino.email}
+                        </p>
                       </div>
-                    </td>
-                    <td>
-                      {inquilino.propiedad ? (
-                        <div className="property-info-cell">
-                          <span className="property-name-text" style={{ fontWeight: '500', display: 'block' }}>
-                            {inquilino.propiedad.nombre}
-                          </span>
-                          <span className="property-address-text" style={{ fontSize: '13px', color: '#6b7280' }}>
-                            {inquilino.propiedad.direccion}, {inquilino.propiedad.ciudad}
-                          </span>
+                    </div>
+                    {inquilino.contratoEstado && inquilino.contratoEstado !== 'sin_contrato' ? (
+                      <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
+                        {getContratoEstadoLabel(inquilino.contratoEstado)}
+                      </span>
+                    ) : (
+                      <span className="badge badge-secondary">Sin Contrato</span>
+                    )}
+                  </div>
+
+                  {/* Property Info */}
+                  <div style={{
+                    padding: '0.75rem',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                  }}>
+                    {inquilino.propiedad ? (
+                      <>
+                        <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#374151' }}>
+                          {inquilino.propiedad.nombre}
                         </div>
-                      ) : (
-                        <span className="no-property" style={{ color: '#9ca3af' }}>Sin propiedad</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className="phone-text">{inquilino.telefono}</span>
-                    </td>
-                    <td>
-                      {inquilino.contratoEstado === 'sin_contrato' || !inquilino.contratoEstado ? (
-                        <span className="no-contract" style={{ color: '#9ca3af' }}>Sin contrato</span>
-                      ) : (
-                        <div className="contract-info">
-                          <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
-                            {getContratoEstadoLabel(inquilino.contratoEstado)}
-                          </span>
-                          {inquilino.contratoFin && (
-                            <span className="contract-date" style={{ 
-                              display: 'block', 
-                              fontSize: '12px', 
-                              color: '#6b7280',
-                              marginTop: '4px' 
-                            }}>
-                              Vence: {formatDate(inquilino.contratoFin)}
-                            </span>
-                          )}
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '2px' }}>
+                          {inquilino.propiedad.direccion}, {inquilino.propiedad.ciudad}
                         </div>
-                      )}
-                    </td>
-                    <td>
-                      <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          className="btn btn-outline btn-sm"
-                          onClick={() => handleOpenModal(inquilino)}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                          Editar
-                        </button>
-                        <button
-                          className="btn btn-outline btn-sm"
-                          onClick={() => handleContactar(inquilino)}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                          </svg>
-                          Contactar
-                        </button>
-                        <button
-                          className="btn btn-outline btn-sm btn-danger-text"
-                          onClick={() => handleDelete(inquilino.id)}
-                          style={{ color: '#dc2626', borderColor: '#dc2626' }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3,6 5,6 21,6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                          Eliminar
-                        </button>
+                      </>
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>Sin propiedad asignada</span>
+                    )}
+                  </div>
+
+                  {/* Details */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Teléfono</span>
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>{inquilino.telefono}</span>
+                    </div>
+                    {inquilino.contratoFin && (
+                      <div>
+                        <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Vencimiento</span>
+                        <span style={{ fontSize: '14px', fontWeight: '500' }}>{formatDate(inquilino.contratoFin)}</span>
                       </div>
-                    </td>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => handleOpenModal(inquilino)}
+                      style={{ flex: 1 }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                      Editar
+                    </button>
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => handleContactar(inquilino)}
+                      style={{ flex: 1 }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                      Contactar
+                    </button>
+                    <button
+                      className="btn btn-outline btn-sm btn-danger-text"
+                      onClick={() => handleDelete(inquilino.id)}
+                      style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3,6 5,6 21,6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* List/Table View */
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Inquilino</th>
+                    <th>Propiedad</th>
+                    <th>Telefono</th>
+                    <th>Contrato</th>
+                    <th>Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {inquilinos.map((inquilino) => (
+                    <tr key={inquilino.id}>
+                      <td>
+                        <div className="tenant-cell" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <TenantAvatar
+                            src={inquilino.avatar}
+                            alt={`${inquilino.nombre} ${inquilino.apellido}`}
+                            size={40}
+                          />
+                          <div className="tenant-info">
+                            <span className="tenant-name" style={{ fontWeight: '500', display: 'block' }}>
+                              {inquilino.nombre} {inquilino.apellido}
+                            </span>
+                            <span className="tenant-subtitle" style={{ fontSize: '13px', color: '#6b7280' }}>
+                              {inquilino.email}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        {inquilino.propiedad ? (
+                          <div className="property-info-cell">
+                            <span className="property-name-text" style={{ fontWeight: '500', display: 'block' }}>
+                              {inquilino.propiedad.nombre}
+                            </span>
+                            <span className="property-address-text" style={{ fontSize: '13px', color: '#6b7280' }}>
+                              {inquilino.propiedad.direccion}, {inquilino.propiedad.ciudad}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="no-property" style={{ color: '#9ca3af' }}>Sin propiedad</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="phone-text">{inquilino.telefono}</span>
+                      </td>
+                      <td>
+                        {inquilino.contratoEstado === 'sin_contrato' || !inquilino.contratoEstado ? (
+                          <span className="no-contract" style={{ color: '#9ca3af' }}>Sin contrato</span>
+                        ) : (
+                          <div className="contract-info">
+                            <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
+                              {getContratoEstadoLabel(inquilino.contratoEstado)}
+                            </span>
+                            {inquilino.contratoFin && (
+                              <span className="contract-date" style={{
+                                display: 'block',
+                                fontSize: '12px',
+                                color: '#6b7280',
+                                marginTop: '4px'
+                              }}>
+                                Vence: {formatDate(inquilino.contratoFin)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <div className="action-buttons" style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="btn btn-outline btn-sm"
+                            onClick={() => handleOpenModal(inquilino)}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                            Editar
+                          </button>
+                          <button
+                            className="btn btn-outline btn-sm"
+                            onClick={() => handleContactar(inquilino)}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                              <polyline points="22,6 12,13 2,6" />
+                            </svg>
+                            Contactar
+                          </button>
+                          <button
+                            className="btn btn-outline btn-sm btn-danger-text"
+                            onClick={() => handleDelete(inquilino.id)}
+                            style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3,6 5,6 21,6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div className="table-pagination">
             <span className="pagination-info">

@@ -50,7 +50,7 @@ export function PagosPage() {
   const [filterEstado, setFilterEstado] = useState<string>('');
   
   // View mode
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   // Month selector
   const [selectedMonth, setSelectedMonth] = useState(() => {
