@@ -9,10 +9,11 @@ interface MainLayoutProps {
   currentPage: PageType;
   onNavigate: (page: PageType) => void;
   onLogout: () => void;
+  onUserAvatarClick?: () => void;
   user?: User | null;
 }
 
-export function MainLayout({ children, currentPage, onNavigate, onLogout, user }: MainLayoutProps) {
+export function MainLayout({ children, currentPage, onNavigate, onLogout, onUserAvatarClick, user }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const toggleSidebar = () => {
@@ -29,7 +30,7 @@ export function MainLayout({ children, currentPage, onNavigate, onLogout, user }
         user={user}
       />
       <div className="main-wrapper">
-        <Navbar onToggleSidebar={toggleSidebar} user={user} />
+        <Navbar onToggleSidebar={toggleSidebar} onUserAvatarClick={onUserAvatarClick} user={user} />
         <main className="main-content">
           {children}
         </main>

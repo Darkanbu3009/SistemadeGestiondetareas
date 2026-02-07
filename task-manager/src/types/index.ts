@@ -2,9 +2,53 @@
 export interface User {
   id: number;
   name: string;
+  apellido?: string;
   email: string;
+  telefono?: string;
   avatar?: string;
+  role?: string;
 }
+
+// User Profile types
+export interface UserProfileData {
+  id: number;
+  name: string;
+  apellido?: string;
+  email: string;
+  telefono?: string;
+  avatar?: string;
+  role?: string;
+}
+
+export interface UserPreference {
+  id: number;
+  idioma: string;
+  zonaHoraria: string;
+  notificacionesCorreo: boolean;
+  notificacionesSistema: boolean;
+  elementosPorPagina: number;
+}
+
+export interface UserSession {
+  id: number;
+  ubicacion: string;
+  ciudad: string;
+  ipAddress: string;
+  dispositivo: string;
+  activa: boolean;
+  fechaInicio: string;
+}
+
+export interface UserSubscription {
+  id: number;
+  plan: string;
+  estado: string;
+  tarjetaUltimos4?: string;
+  tarjetaExpiracion?: string;
+  proximoPago?: string;
+}
+
+export type ProfilePageType = 'perfil' | 'seguridad' | 'notificaciones' | 'preferencias' | 'suscripcion' | 'historial';
 
 export interface Propiedad {
   id: number;

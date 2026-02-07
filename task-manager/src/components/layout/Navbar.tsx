@@ -2,10 +2,11 @@ import type { User } from '../../types';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
+  onUserAvatarClick?: () => void;
   user?: User | null;
 }
 
-export function Navbar({ onToggleSidebar, user }: NavbarProps) {
+export function Navbar({ onToggleSidebar, onUserAvatarClick, user }: NavbarProps) {
   return (
     <header className="navbar">
       <div className="navbar-left">
@@ -33,7 +34,7 @@ export function Navbar({ onToggleSidebar, user }: NavbarProps) {
           <span className="notification-badge"></span>
         </button>
 
-        <div className="user-menu">
+        <div className="user-menu" onClick={onUserAvatarClick} style={{ cursor: onUserAvatarClick ? 'pointer' : 'default' }}>
           <div className="user-avatar">
             {user?.avatar ? (
               <img src={user.avatar} alt={user.name} />

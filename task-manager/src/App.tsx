@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { MainLayout } from './components/layout';
 import type { PageType } from './components/layout';
+import { UserProfileLayout } from './components/layout';
 import { DashboardPage, PropiedadesPage, InquilinosPage, PagosPage, ContratosPage } from './components/pages';
+import { PerfilUsuarioPage, SeguridadPage, NotificacionesPage, PreferenciasPage, SuscripcionPage, HistorialPage } from './components/pages/perfil';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
-import type { User } from './types';
+import type { User, ProfilePageType } from './types';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
@@ -16,6 +18,8 @@ function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [showRegister, setShowRegister] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
+  const [showProfile, setShowProfile] = useState(false);
+  const [currentProfilePage, setCurrentProfilePage] = useState<ProfilePageType>('perfil');
 
   // Check if user is logged in on mount
   useEffect(() => {
@@ -87,10 +91,25 @@ function App() {
     setToken(null);
     setUser(null);
     setCurrentPage('dashboard');
+    setShowProfile(false);
   };
 
   const handleNavigate = (page: PageType) => {
     setCurrentPage(page);
+    setShowProfile(false);
+  };
+
+  const handleUserAvatarClick = () => {
+    setShowProfile(true);
+    setCurrentProfilePage('perfil');
+  };
+
+  const handleGoBackToDashboard = () => {
+    setShowProfile(false);
+  };
+
+  const handleNavigateProfile = (page: ProfilePageType) => {
+    setCurrentProfilePage(page);
   };
 
   // Show login/register if not authenticated
@@ -125,6 +144,41 @@ function App() {
     );
   }
 
+  // Render profile page
+  const renderProfilePage = () => {
+    switch (currentProfilePage) {
+      case 'perfil':
+        return <PerfilUsuarioPage />;
+      case 'seguridad':
+        return <SeguridadPage />;
+      case 'notificaciones':
+        return <NotificacionesPage />;
+      case 'preferencias':
+        return <PreferenciasPage />;
+      case 'suscripcion':
+        return <SuscripcionPage />;
+      case 'historial':
+        return <HistorialPage />;
+      default:
+        return <PerfilUsuarioPage />;
+    }
+  };
+
+  // Show profile section
+  if (showProfile) {
+    return (
+      <UserProfileLayout
+        currentProfilePage={currentProfilePage}
+        onNavigateProfile={handleNavigateProfile}
+        onToggleSidebar={() => {}}
+        onGoBack={handleGoBackToDashboard}
+        user={user}
+      >
+        {renderProfilePage()}
+      </UserProfileLayout>
+    );
+  }
+
   // Render page content based on current page
   const renderPage = () => {
     switch (currentPage) {
@@ -148,6 +202,7 @@ function App() {
       currentPage={currentPage}
       onNavigate={handleNavigate}
       onLogout={handleLogout}
+      onUserAvatarClick={handleUserAvatarClick}
       user={user}
     >
       {renderPage()}
