@@ -499,7 +499,7 @@ export function InquilinosPage() {
                           Contactar
                         </button>
                         <button
-                          className="btn btn-outline btn-sm btn-danger"
+                          className="btn btn-outline btn-sm btn-danger-text"
                           onClick={() => handleDelete(inquilino.id)}
                           style={{ color: '#dc2626', borderColor: '#dc2626' }}
                         >
