@@ -1,4 +1,5 @@
 import type { ProfilePageType } from '../../types';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface UserProfileSidebarProps {
   currentPage: ProfilePageType;
@@ -6,10 +7,11 @@ interface UserProfileSidebarProps {
 }
 
 export function UserProfileSidebar({ currentPage, onNavigate }: UserProfileSidebarProps) {
+  const { t } = useLanguage();
   const menuItems: { id: ProfilePageType; label: string; icon: React.ReactNode }[] = [
     {
       id: 'perfil',
-      label: 'Perfil de usuario',
+      label: t('nav.perfil'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -19,7 +21,7 @@ export function UserProfileSidebar({ currentPage, onNavigate }: UserProfileSideb
     },
     {
       id: 'seguridad',
-      label: 'Seguridad',
+      label: t('nav.seguridad'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -29,7 +31,7 @@ export function UserProfileSidebar({ currentPage, onNavigate }: UserProfileSideb
     },
     {
       id: 'notificaciones',
-      label: 'Notificaciones',
+      label: t('nav.notificaciones'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -39,7 +41,7 @@ export function UserProfileSidebar({ currentPage, onNavigate }: UserProfileSideb
     },
     {
       id: 'preferencias',
-      label: 'Preferencias',
+      label: t('nav.preferencias'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="3" />
@@ -49,7 +51,7 @@ export function UserProfileSidebar({ currentPage, onNavigate }: UserProfileSideb
     },
     {
       id: 'suscripcion',
-      label: 'Suscripción',
+      label: t('nav.suscripcion'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
@@ -59,7 +61,7 @@ export function UserProfileSidebar({ currentPage, onNavigate }: UserProfileSideb
     },
     {
       id: 'historial',
-      label: 'Historial',
+      label: t('nav.historial'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="10" />

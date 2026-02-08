@@ -7,6 +7,7 @@ import {
   deleteInquilino,
 } from '../../services/inquilinosService';
 import { getPropiedadesDisponibles, getAllPropiedades } from '../../services/propiedadService';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 const emptyFormData: InquilinoFormData = {
   nombre: '',
@@ -21,6 +22,7 @@ const emptyFormData: InquilinoFormData = {
 type ViewMode = 'grid' | 'list';
 
 export function InquilinosPage() {
+  const { t } = useLanguage();
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
   const [propiedadesDisponibles, setPropiedadesDisponibles] = useState<Propiedad[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -145,7 +147,7 @@ export function InquilinosPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Está seguro de eliminar este inquilino?')) {
+    if (!window.confirm(t('inq.confirmarEliminar'))) {
       return;
     }
 
@@ -190,15 +192,15 @@ export function InquilinosPage() {
   const getContratoEstadoLabel = (estado?: string) => {
     switch (estado) {
       case 'activo':
-        return 'Activo';
+        return t('inq.activo');
       case 'en_proceso':
-        return 'En Proceso';
+        return t('inq.enProceso');
       case 'finalizado':
-        return 'Finalizado';
+        return t('inq.finalizado');
       case 'sin_contrato':
-        return 'Sin Contrato';
+        return t('inq.sinContrato');
       default:
-        return 'Sin Contrato';
+        return t('inq.sinContrato');
     }
   };
 
@@ -254,7 +256,7 @@ export function InquilinosPage() {
 
     if (showFallback) {
       return (
-        <div 
+        <div
           className="tenant-avatar-fallback"
           style={{
             width: size,
@@ -269,12 +271,12 @@ export function InquilinosPage() {
             color: '#9ca3af'
           }}
         >
-          <svg 
-            width={size * 0.5} 
-            height={size * 0.5} 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            width={size * 0.5}
+            height={size * 0.5}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
             strokeWidth="2"
           >
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -287,7 +289,7 @@ export function InquilinosPage() {
     return (
       <div style={{ position: 'relative', width: size, height: size, minWidth: size, minHeight: size }}>
         {!imageLoaded && (
-          <div 
+          <div
             style={{
               position: 'absolute',
               top: 0,
@@ -336,9 +338,9 @@ export function InquilinosPage() {
   return (
     <div className="inquilinos-page">
       <div className="page-header">
-        <h1 className="page-title">Inquilinos</h1>
+        <h1 className="page-title">{t('inq.titulo')}</h1>
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-          <span>+</span> Agregar inquilino
+          <span>+</span> {t('inq.agregar').replace('+ ', '')}
         </button>
       </div>
 
@@ -378,7 +380,7 @@ export function InquilinosPage() {
           </svg>
           <input
             type="text"
-            placeholder="Buscar inquilino..."
+            placeholder={t('inq.buscar')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -387,7 +389,7 @@ export function InquilinosPage() {
           <button
             className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
             onClick={() => setViewMode('grid')}
-            title="Vista en cuadrícula"
+            title={t('inq.vistaGrid')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" />
@@ -399,7 +401,7 @@ export function InquilinosPage() {
           <button
             className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
-            title="Vista en lista"
+            title={t('inq.vistaLista')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="8" y1="6" x2="21" y2="6" />
@@ -421,7 +423,7 @@ export function InquilinosPage() {
           padding: '60px',
           color: '#6b7280'
         }}>
-          <span>Cargando inquilinos...</span>
+          <span>{t('inq.cargando')}</span>
         </div>
       ) : inquilinos.length === 0 ? (
         <div className="empty-state" style={{
@@ -429,10 +431,10 @@ export function InquilinosPage() {
           padding: '60px',
           color: '#6b7280'
         }}>
-          <p>{debouncedSearch ? 'No se encontraron inquilinos' : 'No hay inquilinos registrados'}</p>
+          <p>{debouncedSearch ? t('inq.noEncontrados') : t('inq.sinInquilinos')}</p>
           {!debouncedSearch && (
             <button className="btn btn-primary" onClick={() => handleOpenModal()} style={{ marginTop: '16px' }}>
-              Agregar primer inquilino
+              {t('inq.agregarPrimero')}
             </button>
           )}
         </div>
@@ -480,7 +482,7 @@ export function InquilinosPage() {
                         {getContratoEstadoLabel(inquilino.contratoEstado)}
                       </span>
                     ) : (
-                      <span className="badge badge-secondary">Sin Contrato</span>
+                      <span className="badge badge-secondary">{t('inq.sinContrato')}</span>
                     )}
                   </div>
 
@@ -500,19 +502,19 @@ export function InquilinosPage() {
                         </div>
                       </>
                     ) : (
-                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>Sin propiedad asignada</span>
+                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>{t('inq.sinPropiedad')}</span>
                     )}
                   </div>
 
                   {/* Details */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
-                      <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Teléfono</span>
+                      <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>{t('inq.telefono')}</span>
                       <span style={{ fontSize: '14px', fontWeight: '500' }}>{inquilino.telefono}</span>
                     </div>
                     {inquilino.contratoFin && (
                       <div>
-                        <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Vencimiento</span>
+                        <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>{t('inq.vencimiento')}</span>
                         <span style={{ fontSize: '14px', fontWeight: '500' }}>{formatDate(inquilino.contratoFin)}</span>
                       </div>
                     )}
@@ -529,7 +531,7 @@ export function InquilinosPage() {
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
-                      Editar
+                      {t('inq.editarBtn')}
                     </button>
                     <button
                       className="btn btn-outline btn-sm"
@@ -540,7 +542,7 @@ export function InquilinosPage() {
                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                         <polyline points="22,6 12,13 2,6" />
                       </svg>
-                      Contactar
+                      {t('inq.contactar')}
                     </button>
                     <button
                       className="btn btn-outline btn-sm btn-danger-text"
@@ -551,7 +553,7 @@ export function InquilinosPage() {
                         <polyline points="3,6 5,6 21,6" />
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                       </svg>
-                      Eliminar
+                      {t('inq.eliminar')}
                     </button>
                   </div>
                 </div>
@@ -563,11 +565,11 @@ export function InquilinosPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Inquilino</th>
-                    <th>Propiedad</th>
-                    <th>Telefono</th>
-                    <th>Contrato</th>
-                    <th>Acciones</th>
+                    <th>{t('inq.titulo')}</th>
+                    <th>{t('inq.propiedadCol')}</th>
+                    <th>{t('inq.telefonoCol')}</th>
+                    <th>{t('inq.contratoCol')}</th>
+                    <th>{t('inq.accionesCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -601,7 +603,7 @@ export function InquilinosPage() {
                             </span>
                           </div>
                         ) : (
-                          <span className="no-property" style={{ color: '#9ca3af' }}>Sin propiedad</span>
+                          <span className="no-property" style={{ color: '#9ca3af' }}>{t('inq.sinPropiedadCorta')}</span>
                         )}
                       </td>
                       <td>
@@ -609,7 +611,7 @@ export function InquilinosPage() {
                       </td>
                       <td>
                         {inquilino.contratoEstado === 'sin_contrato' || !inquilino.contratoEstado ? (
-                          <span className="no-contract" style={{ color: '#9ca3af' }}>Sin contrato</span>
+                          <span className="no-contract" style={{ color: '#9ca3af' }}>{t('inq.sinContrato')}</span>
                         ) : (
                           <div className="contract-info">
                             <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
@@ -622,7 +624,7 @@ export function InquilinosPage() {
                                 color: '#6b7280',
                                 marginTop: '4px'
                               }}>
-                                Vence: {formatDate(inquilino.contratoFin)}
+                                {t('inq.vence')} {formatDate(inquilino.contratoFin)}
                               </span>
                             )}
                           </div>
@@ -638,7 +640,7 @@ export function InquilinosPage() {
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
-                            Editar
+                            {t('inq.editarBtn')}
                           </button>
                           <button
                             className="btn btn-outline btn-sm"
@@ -648,7 +650,7 @@ export function InquilinosPage() {
                               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                               <polyline points="22,6 12,13 2,6" />
                             </svg>
-                            Contactar
+                            {t('inq.contactar')}
                           </button>
                           <button
                             className="btn btn-outline btn-sm btn-danger-text"
@@ -659,7 +661,7 @@ export function InquilinosPage() {
                               <polyline points="3,6 5,6 21,6" />
                               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                             </svg>
-                            Eliminar
+                            {t('inq.eliminar')}
                           </button>
                         </div>
                       </td>
@@ -672,7 +674,7 @@ export function InquilinosPage() {
 
           <div className="table-pagination">
             <span className="pagination-info">
-              {totalElements > 0 ? `${startItem}-${endItem} de ${totalElements}` : '0 resultados'}
+              {totalElements > 0 ? `${startItem}-${endItem} de ${totalElements}` : `0 ${t('pag.resultados')}`}
             </span>
             <div className="pagination-controls">
               <button
@@ -707,7 +709,7 @@ export function InquilinosPage() {
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingInquilino ? 'Editar inquilino' : 'Agregar inquilino'}</h2>
+              <h2>{editingInquilino ? t('inq.editar') : t('inq.agregarTitle')}</h2>
               <button className="modal-close" onClick={handleCloseModal}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -719,7 +721,7 @@ export function InquilinosPage() {
               <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="nombre">Nombre</label>
+                    <label htmlFor="nombre">{t('inq.nombre')}</label>
                     <input
                       type="text"
                       id="nombre"
@@ -730,7 +732,7 @@ export function InquilinosPage() {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="apellido">Apellido</label>
+                    <label htmlFor="apellido">{t('inq.apellido')}</label>
                     <input
                       type="text"
                       id="apellido"
@@ -743,7 +745,7 @@ export function InquilinosPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="email">Email</label>
+                  <label htmlFor="email">{t('inq.email')}</label>
                   <input
                     type="email"
                     id="email"
@@ -756,7 +758,7 @@ export function InquilinosPage() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="telefono">Telefono</label>
+                    <label htmlFor="telefono">{t('inq.telefono')}</label>
                     <input
                       type="tel"
                       id="telefono"
@@ -767,7 +769,7 @@ export function InquilinosPage() {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="documento">Documento de identidad</label>
+                    <label htmlFor="documento">{t('inq.documento')}</label>
                     <input
                       type="text"
                       id="documento"
@@ -780,14 +782,14 @@ export function InquilinosPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="propiedadId">Propiedad (opcional)</label>
+                  <label htmlFor="propiedadId">{t('inq.propiedad')}</label>
                   <select
                     id="propiedadId"
                     name="propiedadId"
                     value={formData.propiedadId || ''}
                     onChange={handleInputChange}
                   >
-                    <option value="">Sin propiedad asignada</option>
+                    <option value="">{t('inq.sinPropiedad')}</option>
                     {propiedadesDisponibles.map((propiedad) => (
                       <option key={propiedad.id} value={propiedad.id}>
                         {propiedad.nombre} - {propiedad.direccion}
@@ -797,22 +799,22 @@ export function InquilinosPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="avatar">URL de foto (opcional)</label>
+                  <label htmlFor="avatar">{t('inq.urlFoto')}</label>
                   <input
                     type="text"
                     id="avatar"
                     name="avatar"
                     value={formData.avatar}
                     onChange={handleInputChange}
-                    placeholder="https://ejemplo.com/imagen.jpg"
+                    placeholder={t('inq.placeholder.urlFoto')}
                   />
                   <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    Ingresa una URL válida de imagen (jpg, png, webp).
+                    {t('inq.urlImagenInfo')}
                   </small>
                   {formData.avatar && (
                     <div style={{ marginTop: '12px' }}>
                       <span style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>
-                        Vista previa:
+                        {t('inq.vistaPrevia')}
                       </span>
                       <TenantAvatar src={formData.avatar} alt="Vista previa" size={64} />
                     </div>
@@ -821,10 +823,10 @@ export function InquilinosPage() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={submitting}>
-                  Cancelar
+                  {t('inq.cancelar')}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Guardando...' : (editingInquilino ? 'Guardar cambios' : 'Agregar inquilino')}
+                  {submitting ? t('inq.guardando') : (editingInquilino ? t('inq.guardarCambios') : t('inq.agregarTitle'))}
                 </button>
               </div>
             </form>

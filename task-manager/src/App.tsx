@@ -6,6 +6,7 @@ import { DashboardPage, PropiedadesPage, InquilinosPage, PagosPage, ContratosPag
 import { PerfilUsuarioPage, SeguridadPage, NotificacionesPage, PreferenciasPage, SuscripcionPage, HistorialPage } from './components/pages/perfil';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
+import { LanguageProvider } from './i18n/LanguageContext';
 import type { User, ProfilePageType } from './types';
 import './App.css';
 
@@ -115,32 +116,36 @@ function App() {
   // Show login/register if not authenticated
   if (!token || !user) {
     return (
-      <div className="auth-wrapper">
-        {error && (
-          <div className="auth-error-toast">{error}</div>
-        )}
+      <LanguageProvider>
+        <div className="auth-wrapper">
+          {error && (
+            <div className="auth-error-toast">{error}</div>
+          )}
 
-        {showRegister ? (
-          <Register
-            onRegister={handleRegister}
-            onSwitchToLogin={() => setShowRegister(false)}
-          />
-        ) : (
-          <Login
-            onLogin={handleLogin}
-            onSwitchToRegister={() => setShowRegister(true)}
-          />
-        )}
-      </div>
+          {showRegister ? (
+            <Register
+              onRegister={handleRegister}
+              onSwitchToLogin={() => setShowRegister(false)}
+            />
+          ) : (
+            <Login
+              onLogin={handleLogin}
+              onSwitchToRegister={() => setShowRegister(true)}
+            />
+          )}
+        </div>
+      </LanguageProvider>
     );
   }
 
   if (loading) {
     return (
-      <div className="loading-screen">
-        <div className="loading-spinner"></div>
-        <p>Cargando...</p>
-      </div>
+      <LanguageProvider>
+        <div className="loading-screen">
+          <div className="loading-spinner"></div>
+          <p>Cargando...</p>
+        </div>
+      </LanguageProvider>
     );
   }
 
@@ -167,16 +172,18 @@ function App() {
   // Show profile section
   if (showProfile) {
     return (
-      <UserProfileLayout
-        currentProfilePage={currentProfilePage}
-        onNavigateProfile={handleNavigateProfile}
-        onToggleSidebar={() => {}}
-        onGoBack={handleGoBackToDashboard}
-        onLogout={handleLogout}
-        user={user}
-      >
-        {renderProfilePage()}
-      </UserProfileLayout>
+      <LanguageProvider>
+        <UserProfileLayout
+          currentProfilePage={currentProfilePage}
+          onNavigateProfile={handleNavigateProfile}
+          onToggleSidebar={() => {}}
+          onGoBack={handleGoBackToDashboard}
+          onLogout={handleLogout}
+          user={user}
+        >
+          {renderProfilePage()}
+        </UserProfileLayout>
+      </LanguageProvider>
     );
   }
 
@@ -199,15 +206,17 @@ function App() {
   };
 
   return (
-    <MainLayout
-      currentPage={currentPage}
-      onNavigate={handleNavigate}
-      onLogout={handleLogout}
-      onNavigateProfile={handleNavigateToProfile}
-      user={user}
-    >
-      {renderPage()}
-    </MainLayout>
+    <LanguageProvider>
+      <MainLayout
+        currentPage={currentPage}
+        onNavigate={handleNavigate}
+        onLogout={handleLogout}
+        onNavigateProfile={handleNavigateToProfile}
+        user={user}
+      >
+        {renderPage()}
+      </MainLayout>
+    </LanguageProvider>
   );
 }
 

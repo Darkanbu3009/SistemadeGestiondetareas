@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface RegisterProps {
   onRegister: (name: string, email: string, password: string) => void;
@@ -6,6 +7,7 @@ interface RegisterProps {
 }
 
 export const Register = ({ onRegister, onSwitchToLogin }: RegisterProps) => {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,12 +19,12 @@ export const Register = ({ onRegister, onSwitchToLogin }: RegisterProps) => {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Las contrasenas no coinciden');
+      setError(t('auth.passwordMismatch'));
       return;
     }
 
     if (password.length < 6) {
-      setError('La contrasena debe tener al menos 6 caracteres');
+      setError(t('auth.passwordMinLength'));
       return;
     }
 
@@ -37,16 +39,16 @@ export const Register = ({ onRegister, onSwitchToLogin }: RegisterProps) => {
         <div className="auth-form-container">
           <div className="auth-logo">
             <img src="/zelvoria-logo.svg" alt="Zelvoria" className="logo-image" />
-            <p className="logo-tagline">Gestion inteligente de rentas</p>
+            <p className="logo-tagline">{t('auth.tagline')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
-            <h2 className="auth-title">Crea tu cuenta</h2>
+            <h2 className="auth-title">{t('auth.register')}</h2>
 
             {error && <div className="form-error">{error}</div>}
 
             <div className="form-group">
-              <label htmlFor="name">Nombre completo</label>
+              <label htmlFor="name">{t('auth.fullName')}</label>
               <div className="input-with-icon">
                 <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -57,14 +59,14 @@ export const Register = ({ onRegister, onSwitchToLogin }: RegisterProps) => {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Tu nombre y apellido"
+                  placeholder={t('auth.fullNamePlaceholder')}
                   required
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t('auth.email')}</label>
               <div className="input-with-icon">
                 <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -75,14 +77,14 @@ export const Register = ({ onRegister, onSwitchToLogin }: RegisterProps) => {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Tu email"
+                  placeholder={t('auth.emailPlaceholder')}
                   required
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Contrasena</label>
+              <label htmlFor="password">{t('auth.password')}</label>
               <div className="input-with-icon">
                 <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -93,7 +95,7 @@ export const Register = ({ onRegister, onSwitchToLogin }: RegisterProps) => {
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Crear una contrasena"
+                  placeholder={t('auth.createPassword')}
                   required
                   minLength={6}
                 />
@@ -101,7 +103,7 @@ export const Register = ({ onRegister, onSwitchToLogin }: RegisterProps) => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="confirmPassword">Confirmar contrasena</label>
+              <label htmlFor="confirmPassword">{t('auth.confirmPassword')}</label>
               <div className="input-with-icon">
                 <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -112,20 +114,20 @@ export const Register = ({ onRegister, onSwitchToLogin }: RegisterProps) => {
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repetir contrasena"
+                  placeholder={t('auth.confirmPasswordPlaceholder')}
                   required
                 />
               </div>
             </div>
 
             <button type="submit" className="btn btn-primary btn-block">
-              Crear cuenta
+              {t('auth.registerSubmit')}
             </button>
 
             <div className="auth-footer-center">
-              <span>Ya tienes una cuenta?</span>
+              <span>{t('auth.hasAccount')}</span>
               <button type="button" onClick={onSwitchToLogin} className="link-button link-primary">
-                Iniciar sesion
+                {t('auth.loginLink')}
               </button>
             </div>
           </form>

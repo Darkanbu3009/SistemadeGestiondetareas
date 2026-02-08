@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getPreferences, updatePreferences } from '../../../services/userProfileApi';
+import { useLanguage } from '../../../i18n/LanguageContext';
+
 export function PreferenciasPage() {
+  const { t, setLanguage: setAppLanguage } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -22,8 +25,11 @@ export function PreferenciasPage() {
       setZonaHoraria(pref.zonaHoraria);
       setNotificacionesCorreo(pref.notificacionesCorreo);
       setNotificacionesSistema(pref.notificacionesSistema);
+      // Sync the app language context from the backend preference
+      const lang = pref.idioma === 'en' ? 'en' : 'es';
+      setAppLanguage(lang);
     } catch {
-      setMessage({ type: 'error', text: 'Error al cargar preferencias' });
+      setMessage({ type: 'error', text: t('pref.errorGuardar') });
     } finally {
       setLoading(false);
     }
@@ -32,6 +38,13 @@ export function PreferenciasPage() {
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleIdiomaChange = (value: string) => {
+    setIdioma(value);
+    // Update the app language context immediately
+    const lang = value === 'en' ? 'en' : 'es';
+    setAppLanguage(lang);
   };
 
   const handleSave = async () => {
@@ -43,9 +56,9 @@ export function PreferenciasPage() {
         notificacionesCorreo,
         notificacionesSistema,
       });
-      showMessage('success', 'Preferencias guardadas correctamente');
+      showMessage('success', t('pref.guardadoExito'));
     } catch {
-      showMessage('error', 'Error al guardar preferencias');
+      showMessage('error', t('pref.errorGuardar'));
     } finally {
       setSaving(false);
     }
@@ -55,7 +68,7 @@ export function PreferenciasPage() {
     return (
       <div className="profile-page">
         <div className="loading-spinner"></div>
-        <p>Cargando...</p>
+        <p>{t('pref.cargando')}</p>
       </div>
     );
   }
@@ -69,8 +82,8 @@ export function PreferenciasPage() {
       )}
 
       <div className="profile-page-header">
-        <h1>Preferencias</h1>
-        <p className="profile-page-subtitle">Personaliza tu experiencia</p>
+        <h1>{t('pref.titulo')}</h1>
+        <p className="profile-page-subtitle">{t('pref.subtitulo')}</p>
       </div>
 
       {/* Language */}
@@ -81,15 +94,15 @@ export function PreferenciasPage() {
             <line x1="2" y1="12" x2="22" y2="12" />
             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
           </svg>
-          <h2>Idioma</h2>
+          <h2>{t('pref.idioma')}</h2>
         </div>
         <div className="profile-form">
           <div className="profile-form-group">
-            <label>Idioma</label>
-            <select value={idioma} onChange={(e) => setIdioma(e.target.value)}>
-              <option value="es">Español</option>
-              <option value="en">English</option>
-              <option value="pt">Português</option>
+            <label>{t('pref.idioma')}</label>
+            <select value={idioma} onChange={(e) => handleIdiomaChange(e.target.value)}>
+              <option value="es">{t('pref.espanol')}</option>
+              <option value="en">{t('pref.ingles')}</option>
+              <option value="pt">{t('pref.portugues')}</option>
             </select>
           </div>
         </div>
@@ -102,12 +115,12 @@ export function PreferenciasPage() {
             <circle cx="12" cy="12" r="10" />
             <polyline points="12,6 12,12 16,14" />
           </svg>
-          <h2>Zona horaria</h2>
+          <h2>{t('pref.zonaHoraria')}</h2>
         </div>
-        <p className="profile-card-description">Horarios y eventos serán mostrados en esta zona horaria</p>
+        <p className="profile-card-description">{t('pref.zonaDesc')}</p>
         <div className="profile-form">
           <div className="profile-form-group">
-            <label>Zona horaria</label>
+            <label>{t('pref.zonaHoraria')}</label>
             <select value={zonaHoraria} onChange={(e) => setZonaHoraria(e.target.value)}>
               <option value="UTC-06:00">UTC-06:00 Ciudad de México</option>
               <option value="UTC-05:00">UTC-05:00 Bogotá</option>
@@ -116,7 +129,7 @@ export function PreferenciasPage() {
               <option value="UTC+00:00">UTC+00:00 Londres</option>
               <option value="UTC+01:00">UTC+01:00 Madrid</option>
             </select>
-            <p className="form-help-text">Horarios y eventos serán mostrados en esta zona horaria.</p>
+            <p className="form-help-text">{t('pref.zonaDesc')}.</p>
           </div>
         </div>
       </div>
@@ -129,7 +142,7 @@ export function PreferenciasPage() {
             <line x1="8" y1="21" x2="16" y2="21" />
             <line x1="12" y1="17" x2="12" y2="21" />
           </svg>
-          <h2>Elementos por pagina</h2>
+          <h2>{t('pref.elementosPagina')}</h2>
         </div>
         <div className="profile-form">
           <div className="profile-pref-row">
@@ -140,8 +153,8 @@ export function PreferenciasPage() {
                 </svg>
               </div>
               <div>
-                <span className="pref-label">Mensajes de inquilinos</span>
-                <p className="pref-description">Todos los elementos recibirán un nuevo mensaje de tus registros o recordatorios.</p>
+                <span className="pref-label">{t('pref.mensajesInquilinos')}</span>
+                <p className="pref-description">{t('pref.mensajesInquilinosDesc')}</p>
               </div>
             </div>
             <label className="toggle-switch">
@@ -164,8 +177,8 @@ export function PreferenciasPage() {
                 </svg>
               </div>
               <div>
-                <span className="pref-label">Alertas del sistema</span>
-                <p className="pref-description">Avisos claves datos contados con el elemento de seguridad.</p>
+                <span className="pref-label">{t('pref.alertasSistema')}</span>
+                <p className="pref-description">{t('pref.alertasSistemaDesc')}</p>
               </div>
             </div>
             <label className="toggle-switch">
@@ -182,7 +195,7 @@ export function PreferenciasPage() {
 
       <div className="profile-save-footer">
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? 'Guardando...' : 'Guardar cambios'}
+          {saving ? 'Guardando...' : t('pref.guardar')}
         </button>
       </div>
     </div>

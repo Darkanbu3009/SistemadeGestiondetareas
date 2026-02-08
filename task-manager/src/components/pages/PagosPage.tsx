@@ -3,6 +3,7 @@ import type { Pago, PagoFormData, Inquilino, Propiedad } from '../../types';
 import * as pagosService from '../../services/pagosService';
 import { getAllInquilinos } from '../../services/inquilinosService';
 import { getAllPropiedades } from '../../services/propiedadService';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface PagosStats {
   ingresosMes: number;
@@ -30,6 +31,7 @@ const emptyFormData: PagoFormData = {
 };
 
 export function PagosPage() {
+  const { t } = useLanguage();
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [allPagos, setAllPagos] = useState<Pago[]>([]); // All pagos for client-side filtering
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
@@ -37,21 +39,21 @@ export function PagosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Modal states
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'register'>('create');
   const [selectedPago, setSelectedPago] = useState<Pago | null>(null);
   const [formData, setFormData] = useState<PagoFormData>(emptyFormData);
-  
+
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('');
-  
+
   // View mode
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  
+
   // Month selector
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -61,14 +63,14 @@ export function PagosPage() {
     const now = new Date();
     return now.getFullYear();
   });
-  
+
   // Stats
   const [stats, setStats] = useState<PagosStats>({
     ingresosMes: 0,
     rentasPendientes: 0,
     morosos: 0,
   });
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 10;
@@ -162,12 +164,12 @@ export function PagosPage() {
       const fechaPago = pago.fechaPago ? new Date(pago.fechaPago) : null;
       const fechaVencimiento = pago.fechaVencimiento ? new Date(pago.fechaVencimiento) : null;
       const fecha = fechaPago || fechaVencimiento;
-      
+
       if (!fecha) return false;
-      
+
       const pagoMonth = fecha.getMonth() + 1;
       const pagoYear = fecha.getFullYear();
-      
+
       return pagoMonth === selectedMonth && pagoYear === selectedYear;
     });
 
@@ -182,12 +184,12 @@ export function PagosPage() {
       const fechaPago = pago.fechaPago ? new Date(pago.fechaPago) : null;
       const fechaVencimiento = pago.fechaVencimiento ? new Date(pago.fechaVencimiento) : null;
       const fecha = fechaPago || fechaVencimiento;
-      
+
       if (!fecha) return false;
-      
+
       const pagoMonth = fecha.getMonth() + 1;
       const pagoYear = fecha.getFullYear();
-      
+
       return pagoMonth === selectedMonth && pagoYear === selectedYear;
     });
 
@@ -361,7 +363,7 @@ export function PagosPage() {
 
   // Handle delete
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar este pago?')) return;
+    if (!confirm(t('pag.confirmarEliminar'))) return;
 
     try {
       await pagosService.deletePago(id);
@@ -389,11 +391,11 @@ export function PagosPage() {
   const getEstadoLabel = (estado: string) => {
     switch (estado) {
       case 'pagado':
-        return 'Pagado';
+        return t('pag.pagado');
       case 'pendiente':
-        return 'Pendiente';
+        return t('pag.pendiente');
       case 'atrasado':
-        return 'Atrasado';
+        return t('pag.atrasado');
       default:
         return estado;
     }
@@ -409,12 +411,13 @@ export function PagosPage() {
   // Generate month options
   const getMonthOptions = () => {
     const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      t('mes.enero'), t('mes.febrero'), t('mes.marzo'), t('mes.abril'),
+      t('mes.mayo'), t('mes.junio'), t('mes.julio'), t('mes.agosto'),
+      t('mes.septiembre'), t('mes.octubre'), t('mes.noviembre'), t('mes.diciembre')
     ];
     const options = [];
     const currentYear = new Date().getFullYear();
-    
+
     for (let year = currentYear; year >= currentYear - 2; year--) {
       for (let month = 12; month >= 1; month--) {
         if (year === currentYear && month > new Date().getMonth() + 1) continue;
@@ -507,9 +510,9 @@ export function PagosPage() {
   return (
     <div className="pagos-page">
       <div className="page-header">
-        <h1 className="page-title">Pagos</h1>
+        <h1 className="page-title">{t('pag.titulo')}</h1>
         <button className="btn btn-primary" onClick={handleOpenCreateModal}>
-          <span>+</span> Registrar pago
+          <span>+</span> {t('pag.registrar').replace('+ ', '')}
         </button>
       </div>
 
@@ -542,7 +545,7 @@ export function PagosPage() {
         {/* Ingresos del mes */}
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
-            <span className="stat-label">Ingresos del mes</span>
+            <span className="stat-label">{t('pag.ingresosMes')}</span>
             <span className="stat-icon" style={{ color: '#10b981' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="12" y1="1" x2="12" y2="23" />
@@ -558,7 +561,7 @@ export function PagosPage() {
         {/* Rentas pendientes */}
         <div className="stat-card stat-card-bordered stat-card-warning">
           <div className="stat-header">
-            <span className="stat-label">Rentas pendientes</span>
+            <span className="stat-label">{t('pag.rentasPendientes')}</span>
             <span className="stat-icon" style={{ color: '#3b82f6' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
@@ -574,7 +577,7 @@ export function PagosPage() {
         {/* Morosos */}
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
-            <span className="stat-label">Morosos</span>
+            <span className="stat-label">{t('pag.morosos')}</span>
             <span className="stat-icon" style={{ color: '#ef4444' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -626,10 +629,10 @@ export function PagosPage() {
               setCurrentPage(0);
             }}
           >
-            <option value="">Todos</option>
-            <option value="pagado">Pagado</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="atrasado">Atrasado</option>
+            <option value="">{t('pag.todos')}</option>
+            <option value="pagado">{t('pag.pagado')}</option>
+            <option value="pendiente">{t('pag.pendiente')}</option>
+            <option value="atrasado">{t('pag.atrasado')}</option>
           </select>
           <div className="search-box">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -638,17 +641,17 @@ export function PagosPage() {
             </svg>
             <input
               type="text"
-              placeholder="Buscar pago..."
+              placeholder={t('pag.buscar')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
         <div className="view-toggle">
-          <button 
+          <button
             className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
             onClick={() => setViewMode('grid')}
-            title="Vista de cuadrícula"
+            title={t('pag.vistaGrid')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" />
@@ -657,10 +660,10 @@ export function PagosPage() {
               <rect x="3" y="14" width="7" height="7" />
             </svg>
           </button>
-          <button 
+          <button
             className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
-            title="Vista de lista"
+            title={t('pag.vistaLista')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="8" y1="6" x2="21" y2="6" />
@@ -676,12 +679,12 @@ export function PagosPage() {
 
       {/* Content */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando pagos...</div>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>{t('pag.cargando')}</div>
       ) : paginatedPagos.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <p>No hay pagos para el período seleccionado</p>
+          <p>{t('pag.sinPagos')}</p>
           <button className="btn btn-primary" onClick={handleOpenCreateModal} style={{ marginTop: '1rem' }}>
-            Registrar primer pago
+            {t('pag.registrarPrimero')}
           </button>
         </div>
       ) : viewMode === 'list' ? (
@@ -690,13 +693,13 @@ export function PagosPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Inquilino</th>
-                <th>Propiedad</th>
-                <th>Estado</th>
-                <th>Monto</th>
-                <th>Fecha Vencimiento</th>
-                <th>Fecha Pago</th>
-                <th>Acciones</th>
+                <th>{t('pag.inquilino')}</th>
+                <th>{t('pag.propiedadCol')}</th>
+                <th>{t('pag.estadoCol')}</th>
+                <th>{t('pag.montoCol')}</th>
+                <th>{t('pag.fechaVencimiento')}</th>
+                <th>{t('pag.fechaPago')}</th>
+                <th>{t('pag.accionesCol')}</th>
               </tr>
             </thead>
             <tbody>
@@ -735,7 +738,7 @@ export function PagosPage() {
                     </span>
                     {pago.estado === 'atrasado' && pago.diasAtrasado && pago.diasAtrasado > 0 && (
                       <span style={{ display: 'block', fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>
-                        {pago.diasAtrasado} días atrasado
+                        {pago.diasAtrasado} {t('pag.diasAtrasado')}
                       </span>
                     )}
                   </td>
@@ -759,7 +762,7 @@ export function PagosPage() {
                           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                           <circle cx="12" cy="12" r="3" />
                         </svg>
-                        Ver
+                        {t('pag.ver')}
                       </button>
                       <button
                         className="btn btn-outline btn-sm"
@@ -770,7 +773,7 @@ export function PagosPage() {
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
-                        Editar
+                        {t('pag.editarBtn')}
                       </button>
                       {pago.estado !== 'pagado' && (
                         <button
@@ -783,7 +786,7 @@ export function PagosPage() {
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                             <polyline points="22 4 12 14.01 9 11.01" />
                           </svg>
-                          Pagar
+                          {t('pag.pagar')}
                         </button>
                       )}
                       <button
@@ -806,18 +809,18 @@ export function PagosPage() {
         </div>
       ) : (
         /* Grid View */
-        <div 
-          className="pagos-grid" 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+        <div
+          className="pagos-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
             gap: '1rem',
             marginTop: '1rem'
           }}
         >
           {paginatedPagos.map((pago) => (
-            <div 
-              key={pago.id} 
+            <div
+              key={pago.id}
               className="pago-card"
               style={{
                 backgroundColor: 'white',
@@ -852,13 +855,13 @@ export function PagosPage() {
               {/* Details */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1rem' }}>
                 <div>
-                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Monto</span>
+                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>{t('pag.montoCol')}</span>
                   <span style={{ fontSize: '18px', fontWeight: '600', color: '#10b981' }}>
                     ${pago.monto.toLocaleString()}
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Vencimiento</span>
+                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>{t('pag.vencimiento')}</span>
                   <span style={{ fontSize: '14px', fontWeight: '500' }}>
                     {formatDate(pago.fechaVencimiento)}
                   </span>
@@ -867,7 +870,7 @@ export function PagosPage() {
 
               {pago.fechaPago && (
                 <div style={{ marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Fecha de Pago</span>
+                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>{t('pag.fechaDePago')}</span>
                   <span style={{ fontSize: '14px', fontWeight: '500' }}>
                     {formatDate(pago.fechaPago)}
                   </span>
@@ -875,15 +878,15 @@ export function PagosPage() {
               )}
 
               {pago.estado === 'atrasado' && pago.diasAtrasado && pago.diasAtrasado > 0 && (
-                <div style={{ 
-                  padding: '8px 12px', 
-                  backgroundColor: '#fef2f2', 
-                  borderRadius: '6px', 
+                <div style={{
+                  padding: '8px 12px',
+                  backgroundColor: '#fef2f2',
+                  borderRadius: '6px',
                   marginBottom: '1rem',
                   fontSize: '13px',
                   color: '#dc2626'
                 }}>
-                  ⚠️ {pago.diasAtrasado} días de atraso
+                  ⚠️ {pago.diasAtrasado} {t('pag.diasAtraso')}
                 </div>
               )}
 
@@ -894,14 +897,14 @@ export function PagosPage() {
                   onClick={() => handleOpenViewModal(pago)}
                   style={{ flex: 1 }}
                 >
-                  Ver
+                  {t('pag.ver')}
                 </button>
                 <button
                   className="btn btn-outline btn-sm"
                   onClick={() => handleOpenEditModal(pago)}
                   style={{ flex: 1 }}
                 >
-                  Editar
+                  {t('pag.editarBtn')}
                 </button>
                 {pago.estado !== 'pagado' && (
                   <button
@@ -909,7 +912,7 @@ export function PagosPage() {
                     onClick={() => handleOpenRegisterModal(pago)}
                     style={{ flex: 1 }}
                   >
-                    Pagar
+                    {t('pag.pagar')}
                   </button>
                 )}
               </div>
@@ -922,7 +925,7 @@ export function PagosPage() {
       {totalPages > 0 && (
         <div className="table-pagination">
           <span className="pagination-info">
-            {totalElements > 0 ? `${currentPage * pageSize + 1}-${Math.min((currentPage + 1) * pageSize, totalElements)} de ${totalElements}` : '0 resultados'}
+            {totalElements > 0 ? `${currentPage * pageSize + 1}-${Math.min((currentPage + 1) * pageSize, totalElements)} de ${totalElements}` : `0 ${t('pag.resultados')}`}
           </span>
           <div className="pagination-controls">
             <button
@@ -957,7 +960,7 @@ export function PagosPage() {
         <div className="modal-overlay" onClick={handleCloseViewModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Detalles del Pago</h2>
+              <h2>{t('pag.detallesPago')}</h2>
               <button className="modal-close" onClick={handleCloseViewModal}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -985,14 +988,14 @@ export function PagosPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Propiedad</label>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('pag.propiedadCol')}</label>
                     <p style={{ margin: '4px 0 0', fontWeight: '500' }}>{selectedPago.propiedad?.nombre}</p>
                     <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#6b7280' }}>
                       {selectedPago.propiedad?.direccion}
                     </p>
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Estado</label>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('pag.estadoCol')}</label>
                     <p style={{ margin: '4px 0 0' }}>
                       <span className={`badge ${getEstadoClass(selectedPago.estado)}`}>
                         {getEstadoLabel(selectedPago.estado)}
@@ -1003,20 +1006,20 @@ export function PagosPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Monto</label>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('pag.montoCol')}</label>
                     <p style={{ margin: '4px 0 0', fontWeight: '600', fontSize: '20px', color: '#10b981' }}>
                       ${selectedPago.monto.toLocaleString()}
                     </p>
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Fecha Vencimiento</label>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('pag.fechaVencimiento')}</label>
                     <p style={{ margin: '4px 0 0', fontWeight: '500' }}>{formatDate(selectedPago.fechaVencimiento)}</p>
                   </div>
                 </div>
 
                 {selectedPago.fechaPago && (
                   <div>
-                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Fecha de Pago</label>
+                    <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>{t('pag.fechaDePago')}</label>
                     <p style={{ margin: '4px 0 0', fontWeight: '500' }}>{formatDate(selectedPago.fechaPago)}</p>
                   </div>
                 )}
@@ -1026,7 +1029,7 @@ export function PagosPage() {
                     <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Comprobante</label>
                     <p style={{ margin: '4px 0 0' }}>
                       <a href={selectedPago.comprobante} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
-                        Ver comprobante
+                        {t('pag.verComprobante')}
                       </a>
                     </p>
                   </div>
@@ -1035,7 +1038,7 @@ export function PagosPage() {
                 {selectedPago.estado === 'atrasado' && selectedPago.diasAtrasado && selectedPago.diasAtrasado > 0 && (
                   <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
                     <p style={{ margin: 0, color: '#dc2626', fontWeight: '500' }}>
-                      ⚠️ Este pago tiene {selectedPago.diasAtrasado} días de atraso
+                      ⚠️ {t('pag.pagoAtrasado')} {selectedPago.diasAtrasado} {t('pag.diasAtraso')}
                     </p>
                   </div>
                 )}
@@ -1043,7 +1046,7 @@ export function PagosPage() {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={handleCloseViewModal}>
-                Cerrar
+                {t('pag.cerrar')}
               </button>
               {selectedPago.estado !== 'pagado' && (
                 <button
@@ -1054,7 +1057,7 @@ export function PagosPage() {
                     handleOpenRegisterModal(selectedPago);
                   }}
                 >
-                  Registrar Pago
+                  {t('pag.registrarPago')}
                 </button>
               )}
             </div>
@@ -1069,10 +1072,10 @@ export function PagosPage() {
             <div className="modal-header">
               <h2>
                 {modalMode === 'register'
-                  ? 'Registrar Pago'
+                  ? t('pag.registrarPago')
                   : modalMode === 'edit'
-                  ? 'Editar Pago'
-                  : 'Nuevo Pago'}
+                  ? t('pag.editarPago')
+                  : t('pag.nuevoPago')}
               </h2>
               <button className="modal-close" onClick={handleCloseModal}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1094,17 +1097,17 @@ export function PagosPage() {
                   <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
                     <div style={{ display: 'grid', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#6b7280' }}>Inquilino:</span>
+                        <span style={{ color: '#6b7280' }}>{t('pag.inquilinoLabel')}</span>
                         <span style={{ fontWeight: '500' }}>
                           {selectedPago.inquilino?.nombre} {selectedPago.inquilino?.apellido}
                         </span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#6b7280' }}>Propiedad:</span>
+                        <span style={{ color: '#6b7280' }}>{t('pag.propiedadLabel')}</span>
                         <span style={{ fontWeight: '500' }}>{selectedPago.propiedad?.nombre}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#6b7280' }}>Monto a pagar:</span>
+                        <span style={{ color: '#6b7280' }}>{t('pag.montoAPagar')}</span>
                         <span style={{ fontWeight: '600', color: '#10b981', fontSize: '18px' }}>
                           ${selectedPago.monto.toLocaleString()}
                         </span>
@@ -1118,7 +1121,7 @@ export function PagosPage() {
                   <>
                     <div className="form-row">
                       <div className="form-group">
-                        <label htmlFor="inquilinoId">Inquilino</label>
+                        <label htmlFor="inquilinoId">{t('pag.inquilino')}</label>
                         <select
                           id="inquilinoId"
                           name="inquilinoId"
@@ -1127,7 +1130,7 @@ export function PagosPage() {
                           required
                           disabled={modalMode === 'edit'}
                         >
-                          <option value="">Seleccionar inquilino</option>
+                          <option value="">{t('pag.seleccionarInquilino')}</option>
                           {inquilinos.map((inquilino) => (
                             <option key={inquilino.id} value={inquilino.id}>
                               {inquilino.nombre} {inquilino.apellido}
@@ -1136,7 +1139,7 @@ export function PagosPage() {
                         </select>
                       </div>
                       <div className="form-group">
-                        <label htmlFor="propiedadId">Propiedad</label>
+                        <label htmlFor="propiedadId">{t('pag.propiedadCol')}</label>
                         <select
                           id="propiedadId"
                           name="propiedadId"
@@ -1145,7 +1148,7 @@ export function PagosPage() {
                           required
                           disabled={modalMode === 'edit'}
                         >
-                          <option value="">Seleccionar propiedad</option>
+                          <option value="">{t('pag.seleccionarPropiedad')}</option>
                           {propiedades.map((propiedad) => (
                             <option key={propiedad.id} value={propiedad.id}>
                               {propiedad.nombre} - ${propiedad.rentaMensual?.toLocaleString()}/mes
@@ -1157,7 +1160,7 @@ export function PagosPage() {
 
                     <div className="form-row">
                       <div className="form-group">
-                        <label htmlFor="monto">Monto ($)</label>
+                        <label htmlFor="monto">{t('pag.montoLabel')}</label>
                         <input
                           type="number"
                           id="monto"
@@ -1171,7 +1174,7 @@ export function PagosPage() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="fechaPago">
-                          {modalMode === 'edit' ? 'Fecha de Vencimiento' : 'Fecha de Pago'}
+                          {modalMode === 'edit' ? t('pag.fechaVencimiento') : t('pag.fechaDePago')}
                         </label>
                         <input
                           type="date"
@@ -1186,7 +1189,7 @@ export function PagosPage() {
 
                     {/* Estado del Pago - Ahora disponible en CREATE y EDIT */}
                     <div className="form-group">
-                      <label htmlFor="estado">Estado del Pago</label>
+                      <label htmlFor="estado">{t('pag.estadoPago')}</label>
                       <select
                         id="estado"
                         name="estado"
@@ -1194,9 +1197,9 @@ export function PagosPage() {
                         onChange={handleInputChange}
                         required
                       >
-                        <option value="pagado">Pagado</option>
-                        <option value="pendiente">Pendiente</option>
-                        <option value="atrasado">Atrasado / No Pagado</option>
+                        <option value="pagado">{t('pag.pagado')}</option>
+                        <option value="pendiente">{t('pag.pendiente')}</option>
+                        <option value="atrasado">{t('pag.atrasadoNoPagado')}</option>
                       </select>
                     </div>
                   </>
@@ -1207,7 +1210,7 @@ export function PagosPage() {
                   <>
                     <div className="form-row">
                       <div className="form-group">
-                        <label htmlFor="fechaPago">Fecha de Pago</label>
+                        <label htmlFor="fechaPago">{t('pag.fechaDePago')}</label>
                         <input
                           type="date"
                           id="fechaPago"
@@ -1218,7 +1221,7 @@ export function PagosPage() {
                         />
                       </div>
                       <div className="form-group">
-                        <label htmlFor="estado">Estado del Pago</label>
+                        <label htmlFor="estado">{t('pag.estadoPago')}</label>
                         <select
                           id="estado"
                           name="estado"
@@ -1226,9 +1229,9 @@ export function PagosPage() {
                           onChange={handleInputChange}
                           required
                         >
-                          <option value="pagado">Pagado</option>
-                          <option value="pendiente">Pendiente</option>
-                          <option value="atrasado">Atrasado / No Pagado</option>
+                          <option value="pagado">{t('pag.pagado')}</option>
+                          <option value="pendiente">{t('pag.pendiente')}</option>
+                          <option value="atrasado">{t('pag.atrasadoNoPagado')}</option>
                         </select>
                       </div>
                     </div>
@@ -1236,7 +1239,7 @@ export function PagosPage() {
                 )}
 
                 <div className="form-group">
-                  <label htmlFor="comprobante">URL del Comprobante (opcional)</label>
+                  <label htmlFor="comprobante">{t('pag.urlComprobante')}</label>
                   <input
                     type="text"
                     id="comprobante"
@@ -1246,16 +1249,16 @@ export function PagosPage() {
                     placeholder="https://ejemplo.com/comprobante.pdf"
                   />
                   <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    Ingresa una URL al comprobante de pago (imagen o PDF)
+                    {t('pag.comprobanteDesc')}
                   </small>
                 </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={submitting}>
-                  Cancelar
+                  {t('pag.cancelar')}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Guardando...' : modalMode === 'register' ? 'Registrar Pago' : modalMode === 'edit' ? 'Guardar Cambios' : 'Crear Pago'}
+                  {submitting ? t('pag.guardando') : modalMode === 'register' ? t('pag.registrarPago') : modalMode === 'edit' ? t('pag.guardarCambios') : t('pag.crearPago')}
                 </button>
               </div>
             </form>

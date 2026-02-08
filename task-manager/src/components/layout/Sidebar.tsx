@@ -1,4 +1,5 @@
 import type { User } from '../../types';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export type PageType = 'dashboard' | 'propiedades' | 'inquilinos' | 'pagos' | 'contratos';
 
@@ -11,10 +12,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPage, onNavigate, onLogout, collapsed }: SidebarProps) {
+  const { t } = useLanguage();
   const menuItems: { id: PageType; label: string; icon: React.ReactNode }[] = [
     {
       id: 'dashboard',
-      label: 'Dashboard',
+      label: t('nav.dashboard'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -24,7 +26,7 @@ export function Sidebar({ currentPage, onNavigate, onLogout, collapsed }: Sideba
     },
     {
       id: 'propiedades',
-      label: 'Propiedades',
+      label: t('nav.propiedades'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="3" width="7" height="7" />
@@ -36,7 +38,7 @@ export function Sidebar({ currentPage, onNavigate, onLogout, collapsed }: Sideba
     },
     {
       id: 'inquilinos',
-      label: 'Inquilinos',
+      label: t('nav.inquilinos'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -48,7 +50,7 @@ export function Sidebar({ currentPage, onNavigate, onLogout, collapsed }: Sideba
     },
     {
       id: 'pagos',
-      label: 'Pagos',
+      label: t('nav.pagos'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
@@ -58,7 +60,7 @@ export function Sidebar({ currentPage, onNavigate, onLogout, collapsed }: Sideba
     },
     {
       id: 'contratos',
-      label: 'Contratos',
+      label: t('nav.contratos'),
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -98,7 +100,7 @@ export function Sidebar({ currentPage, onNavigate, onLogout, collapsed }: Sideba
       </nav>
 
       <div className="sidebar-footer">
-        <button className="nav-item logout-btn" onClick={onLogout} title={collapsed ? 'Salir' : undefined}>
+        <button className="nav-item logout-btn" onClick={onLogout} title={collapsed ? t('nav.salir') : undefined}>
           <span className="nav-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -106,7 +108,7 @@ export function Sidebar({ currentPage, onNavigate, onLogout, collapsed }: Sideba
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
           </span>
-          {!collapsed && <span className="nav-label">Salir</span>}
+          {!collapsed && <span className="nav-label">{t('nav.salir')}</span>}
         </button>
       </div>
     </aside>

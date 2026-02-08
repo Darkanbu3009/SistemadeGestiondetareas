@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Contrato, ContratoFormData, Inquilino, Propiedad, ContratoEstado } from '../../types';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   getContratos,
   createContrato,
@@ -30,17 +31,19 @@ const emptyFormData: ContratoFormData = {
   pdfUrl: '',
 };
 
-// Opciones de estado para el dropdown
-const estadoOptions: { value: ContratoEstado; label: string }[] = [
-  { value: 'sin_firmar', label: 'Sin Firmar' },
-  { value: 'en_proceso', label: 'En Proceso' },
-  { value: 'firmado', label: 'Firmado' },
-  { value: 'activo', label: 'Activo' },
-  { value: 'por_vencer', label: 'Por Vencer' },
-  { value: 'finalizado', label: 'Finalizado' },
-];
-
 export function ContratosPage() {
+  const { t } = useLanguage();
+
+  // Opciones de estado para el dropdown (inside component to use t())
+  const estadoOptions: { value: ContratoEstado; label: string }[] = [
+    { value: 'sin_firmar', label: t('cont.sinFirmarOpt') },
+    { value: 'en_proceso', label: t('cont.enProceso') },
+    { value: 'firmado', label: t('cont.firmado') },
+    { value: 'activo', label: t('cont.activo') },
+    { value: 'por_vencer', label: t('cont.porVencerOpt') },
+    { value: 'finalizado', label: t('cont.finalizado') },
+  ];
+
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
   const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
@@ -190,11 +193,11 @@ export function ContratosPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== 'application/pdf') {
-        setError('Solo se permiten archivos PDF');
+        setError(t('cont.errorPdf'));
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
-        setError('El archivo no puede superar los 10MB');
+        setError(t('cont.errorTamano'));
         return;
       }
       setSelectedPdfFile(file);
@@ -209,31 +212,31 @@ export function ContratosPage() {
 
     // Validate required fields
     if (!formData.inquilinoId || formData.inquilinoId === 0) {
-      setError('Por favor selecciona un inquilino');
+      setError(t('cont.errorInquilino'));
       setSubmitting(false);
       return;
     }
 
     if (!formData.propiedadId || formData.propiedadId === 0) {
-      setError('Por favor selecciona una propiedad');
+      setError(t('cont.errorPropiedad'));
       setSubmitting(false);
       return;
     }
 
     if (!formData.fechaInicio) {
-      setError('Por favor ingresa la fecha de inicio');
+      setError(t('cont.errorFechaInicio'));
       setSubmitting(false);
       return;
     }
 
     if (!formData.fechaFin) {
-      setError('Por favor ingresa la fecha de fin');
+      setError(t('cont.errorFechaFin'));
       setSubmitting(false);
       return;
     }
 
     if (!formData.rentaMensual || formData.rentaMensual <= 0) {
-      setError('Por favor ingresa una renta mensual válida');
+      setError(t('cont.errorRenta'));
       setSubmitting(false);
       return;
     }
@@ -275,7 +278,7 @@ export function ContratosPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este contrato?')) {
+    if (confirm(t('cont.confirmarEliminar'))) {
       try {
         await deleteContrato(id);
         fetchContratos();
@@ -294,11 +297,11 @@ export function ContratosPage() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         if (file.type !== 'application/pdf') {
-          setError('Solo se permiten archivos PDF');
+          setError(t('cont.errorPdf'));
           return;
         }
         if (file.size > 10 * 1024 * 1024) {
-          setError('El archivo no puede superar los 10MB');
+          setError(t('cont.errorTamano'));
           return;
         }
         try {
@@ -347,17 +350,17 @@ export function ContratosPage() {
   const getEstadoLabel = (estado: string) => {
     switch (estado) {
       case 'activo':
-        return 'Activo';
+        return t('cont.activo');
       case 'por_vencer':
-        return 'Por vencer';
+        return t('cont.porVencerOpt');
       case 'finalizado':
-        return 'Finalizado';
+        return t('cont.finalizado');
       case 'sin_firmar':
-        return 'Sin firmar';
+        return t('cont.sinFirmarOpt');
       case 'en_proceso':
-        return 'En proceso';
+        return t('cont.enProceso');
       case 'firmado':
-        return 'Firmado';
+        return t('cont.firmado');
       default:
         return estado;
     }
@@ -544,7 +547,7 @@ export function ContratosPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
         <div>
           <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
-            Inicio
+            {t('cont.inicio')}
           </div>
           <div style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 500 }}>
             {formatDate(contrato.fechaInicio)}
@@ -552,7 +555,7 @@ export function ContratosPage() {
         </div>
         <div>
           <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
-            Fin
+            {t('cont.fin')}
           </div>
           <div style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 500 }}>
             {formatDate(contrato.fechaFin)}
@@ -560,7 +563,7 @@ export function ContratosPage() {
         </div>
         <div>
           <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
-            Renta
+            {t('cont.renta')}
           </div>
           <div style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 600 }}>
             ${contrato.rentaMensual.toLocaleString()}
@@ -582,7 +585,7 @@ export function ContratosPage() {
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14,2 14,8 20,8" />
             </svg>
-            Ver PDF
+            {t('cont.verPdf')}
           </a>
         ) : (
           <button
@@ -596,7 +599,7 @@ export function ContratosPage() {
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            {uploadingPdf ? 'Subiendo...' : '+ PDF'}
+            {uploadingPdf ? t('cont.subiendo') : t('cont.subirPdf')}
           </button>
         )}
         <button
@@ -608,7 +611,7 @@ export function ContratosPage() {
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
-          Editar
+          {t('cont.editarBtn')}
         </button>
         <button
           className="btn btn-outline btn-sm btn-danger-text"
@@ -619,7 +622,7 @@ export function ContratosPage() {
             <polyline points="3,6 5,6 21,6" />
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
           </svg>
-          Eliminar
+          {t('cont.eliminar')}
         </button>
       </div>
     </div>
@@ -628,9 +631,9 @@ export function ContratosPage() {
   return (
     <div className="contratos-page">
       <div className="page-header">
-        <h1 className="page-title">Contratos</h1>
+        <h1 className="page-title">{t('cont.titulo')}</h1>
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-          <span>+</span> Añadir contrato
+          {t('cont.anadir')}
         </button>
       </div>
 
@@ -663,7 +666,7 @@ export function ContratosPage() {
       <div className="stats-grid stats-4">
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
-            <span className="stat-label">Contratos activos</span>
+            <span className="stat-label">{t('cont.activos')}</span>
             <span className="stat-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -678,7 +681,7 @@ export function ContratosPage() {
 
         <div className="stat-card stat-card-bordered stat-card-warning">
           <div className="stat-header">
-            <span className="stat-label">Contratos próximos a vencer</span>
+            <span className="stat-label">{t('cont.porVencer')}</span>
             <span className="stat-icon warning">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -694,7 +697,7 @@ export function ContratosPage() {
 
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
-            <span className="stat-label">Contratos finalizados</span>
+            <span className="stat-label">{t('cont.finalizados')}</span>
             <span className="stat-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -709,7 +712,7 @@ export function ContratosPage() {
 
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
-            <span className="stat-label">Contratos sin firmar</span>
+            <span className="stat-label">{t('cont.sinFirmar')}</span>
             <span className="stat-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -736,13 +739,13 @@ export function ContratosPage() {
               setCurrentPage(0);
             }}
           >
-            <option value="">Todos</option>
-            <option value="sin_firmar">Sin firmar</option>
-            <option value="en_proceso">En proceso</option>
-            <option value="firmado">Firmado</option>
-            <option value="activo">Activo</option>
-            <option value="por_vencer">Por vencer</option>
-            <option value="finalizado">Finalizado</option>
+            <option value="">{t('cont.todos')}</option>
+            <option value="sin_firmar">{t('cont.sinFirmarOpt')}</option>
+            <option value="en_proceso">{t('cont.enProceso')}</option>
+            <option value="firmado">{t('cont.firmado')}</option>
+            <option value="activo">{t('cont.activo')}</option>
+            <option value="por_vencer">{t('cont.porVencerOpt')}</option>
+            <option value="finalizado">{t('cont.finalizado')}</option>
           </select>
           <div className="search-box">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -751,7 +754,7 @@ export function ContratosPage() {
             </svg>
             <input
               type="text"
-              placeholder="Buscar contrato..."
+              placeholder={t('cont.buscar')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -761,7 +764,7 @@ export function ContratosPage() {
           <button
             className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
             onClick={() => setViewMode('grid')}
-            title="Vista de cuadrícula"
+            title={t('cont.vistaGrid')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" />
@@ -773,7 +776,7 @@ export function ContratosPage() {
           <button
             className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
-            title="Vista de lista"
+            title={t('cont.vistaLista')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="8" y1="6" x2="21" y2="6" />
@@ -789,12 +792,12 @@ export function ContratosPage() {
 
       {/* Content: Grid or List */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando contratos...</div>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>{t('cont.cargando')}</div>
       ) : contratos.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <p>No hay contratos registrados</p>
+          <p>{t('cont.sinContratos')}</p>
           <button className="btn btn-primary" onClick={() => handleOpenModal()} style={{ marginTop: '1rem' }}>
-            Crear primer contrato
+            {t('cont.crearPrimero')}
           </button>
         </div>
       ) : viewMode === 'grid' ? (
@@ -817,14 +820,14 @@ export function ContratosPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Inquilino</th>
-                <th>Propiedad</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Renta</th>
-                <th>Estado</th>
-                <th>Documento</th>
-                <th>Acciones</th>
+                <th>{t('cont.inquilino')}</th>
+                <th>{t('cont.propiedadCol')}</th>
+                <th>{t('cont.inicio')}</th>
+                <th>{t('cont.fin')}</th>
+                <th>{t('cont.renta')}</th>
+                <th>{t('cont.estadoCol')}</th>
+                <th>{t('cont.documento')}</th>
+                <th>{t('cont.accionesCol')}</th>
               </tr>
             </thead>
             <tbody>
@@ -885,7 +888,7 @@ export function ContratosPage() {
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                             <polyline points="14,2 14,8 20,8" />
                           </svg>
-                          Ver PDF
+                          {t('cont.verPdf')}
                         </a>
                       ) : (
                         <button
@@ -899,7 +902,7 @@ export function ContratosPage() {
                             <polyline points="17 8 12 3 7 8" />
                             <line x1="12" y1="3" x2="12" y2="15" />
                           </svg>
-                          {uploadingPdf ? 'Subiendo...' : '+ Añadir PDF'}
+                          {uploadingPdf ? t('cont.subiendo') : t('cont.anadirPdf')}
                         </button>
                       )}
                     </div>
@@ -914,7 +917,7 @@ export function ContratosPage() {
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
-                        Editar
+                        {t('cont.editarBtn')}
                       </button>
                       <button
                         className="btn btn-outline btn-sm btn-danger-text"
@@ -925,7 +928,7 @@ export function ContratosPage() {
                           <polyline points="3,6 5,6 21,6" />
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                         </svg>
-                        Eliminar
+                        {t('cont.eliminar')}
                       </button>
                     </div>
                   </td>
@@ -975,7 +978,7 @@ export function ContratosPage() {
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingContrato ? 'Editar contrato' : 'Añadir contrato'}</h2>
+              <h2>{editingContrato ? t('cont.editarTitle') : t('cont.anadirTitle')}</h2>
               <button className="modal-close" onClick={handleCloseModal}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -1015,7 +1018,7 @@ export function ContratosPage() {
                       fontSize: '0.875rem',
                     }}
                   >
-                    No hay inquilinos registrados. Por favor, registre al menos un inquilino primero.
+                    {t('cont.sinInquilinos')}
                   </div>
                 )}
                 {propiedades.length === 0 && (
@@ -1030,13 +1033,13 @@ export function ContratosPage() {
                       fontSize: '0.875rem',
                     }}
                   >
-                    No hay propiedades registradas. Por favor, registre al menos una propiedad primero.
+                    {t('cont.sinPropiedades')}
                   </div>
                 )}
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="inquilinoId">Inquilino</label>
+                    <label htmlFor="inquilinoId">{t('cont.inquilino')}</label>
                     <select
                       id="inquilinoId"
                       name="inquilinoId"
@@ -1044,7 +1047,7 @@ export function ContratosPage() {
                       onChange={handleInputChange}
                       required
                     >
-                      <option value="">Seleccionar inquilino</option>
+                      <option value="">{t('cont.seleccionarInquilino')}</option>
                       {inquilinos.map((inquilino) => (
                         <option key={inquilino.id} value={inquilino.id}>
                           {inquilino.nombre} {inquilino.apellido}
@@ -1053,7 +1056,7 @@ export function ContratosPage() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label htmlFor="propiedadId">Propiedad</label>
+                    <label htmlFor="propiedadId">{t('cont.propiedadCol')}</label>
                     <select
                       id="propiedadId"
                       name="propiedadId"
@@ -1061,7 +1064,7 @@ export function ContratosPage() {
                       onChange={handleInputChange}
                       required
                     >
-                      <option value="">Seleccionar propiedad</option>
+                      <option value="">{t('cont.seleccionarPropiedad')}</option>
                       {propiedades.map((propiedad) => (
                         <option key={propiedad.id} value={propiedad.id}>
                           {propiedad.nombre} - {propiedad.direccion}
@@ -1073,7 +1076,7 @@ export function ContratosPage() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="fechaInicio">Fecha de inicio</label>
+                    <label htmlFor="fechaInicio">{t('cont.fechaInicio')}</label>
                     <input
                       type="date"
                       id="fechaInicio"
@@ -1084,7 +1087,7 @@ export function ContratosPage() {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="fechaFin">Fecha de fin</label>
+                    <label htmlFor="fechaFin">{t('cont.fechaFin')}</label>
                     <input
                       type="date"
                       id="fechaFin"
@@ -1098,7 +1101,7 @@ export function ContratosPage() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="rentaMensual">Renta mensual ($)</label>
+                    <label htmlFor="rentaMensual">{t('cont.rentaMensual')}</label>
                     <input
                       type="number"
                       id="rentaMensual"
@@ -1111,7 +1114,7 @@ export function ContratosPage() {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="estado">Estado del contrato</label>
+                    <label htmlFor="estado">{t('cont.estadoContrato')}</label>
                     <select
                       id="estado"
                       name="estado"
@@ -1129,7 +1132,7 @@ export function ContratosPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="pdfUpload">Documento del contrato (PDF)</label>
+                  <label htmlFor="pdfUpload">{t('cont.documentoPdf')}</label>
                   <input
                     type="file"
                     id="pdfUpload"
@@ -1144,7 +1147,7 @@ export function ContratosPage() {
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                         <polyline points="22 4 12 14.01 9 11.01" />
                       </svg>
-                      Archivo seleccionado: {selectedPdfFile.name}
+                      {t('cont.archivoSeleccionado')} {selectedPdfFile.name}
                     </div>
                   )}
                   {editingContrato?.pdfUrl && !selectedPdfFile && (
@@ -1159,18 +1162,18 @@ export function ContratosPage() {
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14,2 14,8 20,8" />
                         </svg>
-                        Ver documento actual
+                        {t('cont.verDocActual')}
                       </a>
                     </div>
                   )}
                   <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    Tamaño máximo: 10MB. Solo archivos PDF.
+                    {t('cont.tamanoMax')}
                   </small>
                 </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={submitting || uploadingPdf}>
-                  Cancelar
+                  {t('cont.cancelar')}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting || uploadingPdf}>
                   {submitting || uploadingPdf ? (
@@ -1187,12 +1190,12 @@ export function ContratosPage() {
                         <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                         <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="1" />
                       </svg>
-                      {uploadingPdf ? 'Subiendo PDF...' : 'Guardando...'}
+                      {uploadingPdf ? t('cont.subiendoPdf') : t('cont.guardando')}
                     </span>
                   ) : editingContrato ? (
-                    'Guardar cambios'
+                    t('cont.guardarCambios')
                   ) : (
-                    'Añadir contrato'
+                    t('cont.anadirTitle')
                   )}
                 </button>
               </div>

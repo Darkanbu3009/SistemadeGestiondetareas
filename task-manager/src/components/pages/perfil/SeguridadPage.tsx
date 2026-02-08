@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { changePassword, getSessions, closeSession, closeAllSessions } from '../../../services/userProfileApi';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { UserSession } from '../../../types';
 
 export function SeguridadPage() {
+  const { t } = useLanguage();
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,11 +36,11 @@ export function SeguridadPage() {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      showMessage('error', 'Las contraseñas no coinciden');
+      showMessage('error', t('seguridad.noCoinciden'));
       return;
     }
     if (newPassword.length < 8) {
-      showMessage('error', 'La contraseña debe tener al menos 8 caracteres');
+      showMessage('error', t('seguridad.minimo8'));
       return;
     }
     setSaving(true);
@@ -47,9 +49,9 @@ export function SeguridadPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      showMessage('success', 'Contraseña actualizada correctamente');
+      showMessage('success', t('seguridad.passwordActualizada'));
     } catch {
-      showMessage('error', 'Error al cambiar la contraseña. Verifica tu contraseña actual.');
+      showMessage('error', t('seguridad.errorPassword'));
     } finally {
       setSaving(false);
     }
@@ -59,9 +61,9 @@ export function SeguridadPage() {
     try {
       await closeSession(sessionId);
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, activa: false } : s));
-      showMessage('success', 'Sesión cerrada');
+      showMessage('success', t('seguridad.sesionCerrada'));
     } catch {
-      showMessage('error', 'Error al cerrar la sesión');
+      showMessage('error', t('seguridad.errorCerrar'));
     }
   };
 
@@ -69,9 +71,9 @@ export function SeguridadPage() {
     try {
       await closeAllSessions();
       setSessions(prev => prev.map(s => ({ ...s, activa: false })));
-      showMessage('success', 'Todas las sesiones han sido cerradas');
+      showMessage('success', t('seguridad.todasCerradas'));
     } catch {
-      showMessage('error', 'Error al cerrar las sesiones');
+      showMessage('error', t('seguridad.errorCerrar'));
     }
   };
 
@@ -95,8 +97,8 @@ export function SeguridadPage() {
       )}
 
       <div className="profile-page-header">
-        <h1>Seguridad</h1>
-        <p className="profile-page-subtitle">Protege tu cuenta y sesión</p>
+        <h1>{t('seguridad.titulo')}</h1>
+        <p className="profile-page-subtitle">{t('seguridad.subtitulo')}</p>
       </div>
 
       {/* Change Password */}
@@ -106,29 +108,29 @@ export function SeguridadPage() {
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-          <h2>Cambiar contraseña</h2>
+          <h2>{t('seguridad.cambiarPassword')}</h2>
         </div>
         <div className="profile-form">
           <div className="profile-form-group">
-            <label>Contraseña actual</label>
+            <label>{t('seguridad.passwordActual')}</label>
             <input
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="••••••••••••"
+              placeholder={t('seguridad.placeholderPassword')}
             />
           </div>
           <div className="profile-form-group">
-            <label>Nueva contraseña</label>
+            <label>{t('seguridad.nuevaPassword')}</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
+              placeholder={t('seguridad.minCaracteres')}
             />
           </div>
           <div className="profile-form-group">
-            <label>Confirmar nueva contraseña</label>
+            <label>{t('seguridad.confirmarPassword')}</label>
             <input
               type="password"
               value={confirmPassword}
@@ -136,7 +138,7 @@ export function SeguridadPage() {
             />
           </div>
           <button className="btn btn-primary" onClick={handleChangePassword} disabled={saving}>
-            {saving ? 'Actualizando...' : 'Actualizar contraseña'}
+            {saving ? 'Actualizando...' : t('seguridad.actualizar')}
           </button>
         </div>
       </div>
@@ -148,13 +150,13 @@ export function SeguridadPage() {
             <circle cx="12" cy="12" r="10" />
             <polyline points="12,6 12,12 16,14" />
           </svg>
-          <h2>Actividad reciente</h2>
+          <h2>{t('seguridad.actividadReciente')}</h2>
         </div>
 
         {loading ? (
           <div className="loading-spinner"></div>
         ) : sessions.length === 0 ? (
-          <p className="profile-empty-text">No hay sesiones registradas</p>
+          <p className="profile-empty-text">{t('seguridad.sinSesiones')}</p>
         ) : (
           <div className="sessions-list">
             {sessions.map((session) => (
@@ -174,7 +176,7 @@ export function SeguridadPage() {
                   <span>{session.ubicacion || 'Desconocido'}</span>
                 </div>
                 <div className="session-type">
-                  <span>Sesión actual</span>
+                  <span>{t('seguridad.sesionActual')}</span>
                 </div>
                 <div className="session-actions">
                   {session.activa && (
@@ -182,7 +184,7 @@ export function SeguridadPage() {
                       className="btn btn-outline btn-sm"
                       onClick={() => handleCloseSession(session.id)}
                     >
-                      Cerrar sesión
+                      {t('seguridad.cerrarSesion')}
                     </button>
                   )}
                 </div>
@@ -198,10 +200,10 @@ export function SeguridadPage() {
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12,6 12,12 16,14" />
               </svg>
-              <span>¿Sesiones sospechosas? <a href="#" onClick={(e) => { e.preventDefault(); handleCloseAllSessions(); }}>Cerrar todas las demás sesiones</a></span>
+              <span>{t('seguridad.sesionesSospechosas')} <a href="#" onClick={(e) => { e.preventDefault(); handleCloseAllSessions(); }}>{t('seguridad.cerrarTodas')}</a></span>
             </div>
             <button className="btn btn-danger btn-sm" onClick={handleCloseAllSessions}>
-              Cerrar todas las sesiones
+              {t('seguridad.cerrarTodasBtn')}
             </button>
           </div>
         )}

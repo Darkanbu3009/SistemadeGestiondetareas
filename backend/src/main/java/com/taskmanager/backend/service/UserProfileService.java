@@ -179,6 +179,7 @@ public class UserProfileService {
         preferenceRepository.findByUser(user).ifPresent(preferenceRepository::delete);
         subscriptionRepository.findByUser(user).ifPresent(subscriptionRepository::delete);
         sessionRepository.findByUserOrderByFechaInicioDesc(user).forEach(sessionRepository::delete);
+        billingHistoryRepository.deleteByUser(user);
         userRepository.delete(user);
     }
 }
