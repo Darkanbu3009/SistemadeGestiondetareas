@@ -10,6 +10,7 @@ import com.taskmanager.backend.model.UserSession;
 import com.taskmanager.backend.model.UserSubscription;
 import com.taskmanager.backend.model.BillingHistory;
 import com.taskmanager.backend.repository.UserRepository;
+import com.taskmanager.backend.service.FileStorageService;
 import com.taskmanager.backend.service.UserProfileService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -18,7 +19,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -31,10 +34,12 @@ public class UserProfileController {
 
     private final UserProfileService service;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
-    public UserProfileController(UserProfileService service, UserRepository userRepository) {
+    public UserProfileController(UserProfileService service, UserRepository userRepository, FileStorageService fileStorageService) {
         this.service = service;
         this.userRepository = userRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     private User getCurrentUser() {
@@ -83,6 +88,30 @@ public class UserProfileController {
         response.put("name", updated.getName());
         response.put("avatar", updated.getAvatar());
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/avatar")
+    public ResponseEntity<?> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = auth.getName();
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Upload to Supabase Storage
+            String avatarUrl = fileStorageService.uploadFile(file, "avatars");
+
+            user.setAvatar(avatarUrl);
+            userRepository.save(user);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("avatar", avatarUrl);
+            response.put("message", "Avatar uploaded successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error uploading avatar: " + e.getMessage()));
+        }
     }
 
     // ---- Password ----

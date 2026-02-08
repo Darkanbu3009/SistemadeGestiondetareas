@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface LoginProps {
   onLogin: (email: string, password: string) => void;
@@ -6,6 +7,7 @@ interface LoginProps {
 }
 
 export const Login = ({ onLogin, onSwitchToRegister }: LoginProps) => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -22,14 +24,14 @@ export const Login = ({ onLogin, onSwitchToRegister }: LoginProps) => {
         <div className="auth-form-container">
           <div className="auth-logo">
             <img src="/zelvoria-logo.svg" alt="Zelvoria" className="logo-image" />
-            <p className="logo-tagline">Gestion inteligente de rentas</p>
+            <p className="logo-tagline">{t('auth.tagline')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
-            <h2 className="auth-title">Iniciar sesion</h2>
+            <h2 className="auth-title">{t('auth.login')}</h2>
 
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t('auth.email')}</label>
               <div className="input-with-icon">
                 <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -40,14 +42,14 @@ export const Login = ({ onLogin, onSwitchToRegister }: LoginProps) => {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Tu email"
+                  placeholder={t('auth.emailPlaceholder')}
                   required
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Contrasena</label>
+              <label htmlFor="password">{t('auth.password')}</label>
               <div className="input-with-icon">
                 <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -58,22 +60,22 @@ export const Login = ({ onLogin, onSwitchToRegister }: LoginProps) => {
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Tu contrasena"
+                  placeholder={t('auth.passwordPlaceholder')}
                   required
                 />
               </div>
             </div>
 
             <button type="submit" className="btn btn-primary btn-block">
-              Ingresar
+              {t('auth.submit')}
             </button>
 
             <div className="auth-footer">
               <button type="button" className="link-button">
-                Olvidaste tu contrasena?
+                {t('auth.forgotPassword')}
               </button>
               <button type="button" onClick={onSwitchToRegister} className="link-button link-primary">
-                Crear cuenta
+                {t('auth.createAccount')}
               </button>
             </div>
           </form>

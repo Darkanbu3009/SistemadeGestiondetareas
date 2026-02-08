@@ -15,6 +15,17 @@ export const updateProfile = (data: {
 export const removeAvatar = () =>
   api.delete<UserProfileData>('/perfil/avatar');
 
+export const uploadAvatar = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/perfil/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 // ---- Password ----
 export const changePassword = (data: {
   currentPassword: string;

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getBillingHistory } from '../../../services/userProfileApi';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { BillingRecord } from '../../../types';
 
 type FilterType = 'todo' | '30d' | '12m' | 'custom';
 
 export function HistorialPage() {
+  const { t } = useLanguage();
   const [records, setRecords] = useState<BillingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -101,7 +103,7 @@ export function HistorialPage() {
     return (
       <div className="historial-pagination">
         <span className="historial-pagination-info">
-          Mostrando {records.length} de {totalElements} registros
+          {t('hist.mostrando')} {records.length} {t('hist.de')} {totalElements} {t('hist.registros')}
         </span>
         <div className="historial-pagination-controls">
           <button
@@ -127,8 +129,8 @@ export function HistorialPage() {
   return (
     <div className="profile-page">
       <div className="profile-page-header">
-        <h1>Historial</h1>
-        <p className="profile-page-subtitle">Consulta tus pagos y facturas</p>
+        <h1>{t('hist.titulo')}</h1>
+        <p className="profile-page-subtitle">{t('hist.subtitulo')}</p>
       </div>
 
       <div className="profile-card">
@@ -141,13 +143,13 @@ export function HistorialPage() {
             </svg>
             <input
               type="text"
-              placeholder="Buscar factura"
+              placeholder={t('hist.buscar')}
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
           <button className="btn btn-primary" onClick={handleExportCSV}>
-            Exportar CSV
+            {t('hist.exportar')}
           </button>
         </div>
 
@@ -158,19 +160,19 @@ export function HistorialPage() {
             className={`historial-filter-btn ${activeFilter === 'todo' ? 'historial-filter-btn-active' : ''}`}
             onClick={() => handleFilterChange('todo')}
           >
-            Todo
+            {t('hist.todo')}
           </button>
           <button
             className={`historial-filter-btn ${activeFilter === '30d' ? 'historial-filter-btn-active' : ''}`}
             onClick={() => handleFilterChange('30d')}
           >
-            Últimos 30 días
+            {t('hist.ultimos30')}
           </button>
           <button
             className={`historial-filter-btn ${activeFilter === '12m' ? 'historial-filter-btn-active' : ''}`}
             onClick={() => handleFilterChange('12m')}
           >
-            Últimos 12 meses
+            {t('hist.ultimos12')}
           </button>
           <input
             type="date"
@@ -191,7 +193,7 @@ export function HistorialPage() {
           </div>
         ) : records.length === 0 ? (
           <div className="historial-empty">
-            <p>No se encontraron registros de facturación.</p>
+            <p>{t('hist.sinRegistros')}</p>
           </div>
         ) : (
           <>
@@ -199,10 +201,10 @@ export function HistorialPage() {
               <table className="historial-table">
                 <thead>
                   <tr>
-                    <th>Fecha</th>
-                    <th>Descripción</th>
-                    <th>Monto</th>
-                    <th>Factura</th>
+                    <th>{t('hist.fecha')}</th>
+                    <th>{t('hist.descripcion')}</th>
+                    <th>{t('hist.monto')}</th>
+                    <th>{t('hist.factura')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -221,7 +223,7 @@ export function HistorialPage() {
                             rel="noopener noreferrer"
                             className="btn btn-primary btn-sm"
                           >
-                            Descargar
+                            {t('hist.descargar')}
                           </a>
                         )}
                       </td>

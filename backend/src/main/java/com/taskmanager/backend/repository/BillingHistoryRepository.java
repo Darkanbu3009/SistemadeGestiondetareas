@@ -31,4 +31,6 @@ public interface BillingHistoryRepository extends JpaRepository<BillingHistory, 
             Pageable pageable);
 
     long countByUser(User user);
+
+    void deleteByUser(User user);
 }

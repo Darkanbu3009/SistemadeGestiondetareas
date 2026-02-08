@@ -7,6 +7,7 @@ import {
   deletePropiedad,
 } from '../../services/propiedadService';
 import { getInquilinosByPropiedad } from '../../services/inquilinosService';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 const emptyFormData: PropiedadFormData = {
   nombre: '',
@@ -29,6 +30,7 @@ interface PropiedadConInquilino extends Propiedad {
 }
 
 export function PropiedadesPage() {
+  const { t } = useLanguage();
   const [propiedades, setPropiedades] = useState<PropiedadConInquilino[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -169,11 +171,11 @@ export function PropiedadesPage() {
   const getEstadoLabel = (estado: string) => {
     switch (estado) {
       case 'disponible':
-        return 'Disponible';
+        return t('prop.disponible');
       case 'ocupada':
-        return 'Ocupada';
+        return t('prop.ocupada');
       case 'mantenimiento':
-        return 'Mantenimiento';
+        return t('prop.mantenimiento');
       default:
         return estado;
     }
@@ -224,9 +226,9 @@ export function PropiedadesPage() {
   return (
     <div className="propiedades-page">
       <div className="page-header">
-        <h1 className="page-title">Propiedades</h1>
+        <h1 className="page-title">{t('prop.titulo')}</h1>
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-          <span>+</span> Agregar propiedad
+          {t('prop.agregar')}
         </button>
       </div>
 
@@ -258,7 +260,7 @@ export function PropiedadesPage() {
           </svg>
           <input
             type="text"
-            placeholder="Buscar propiedad..."
+            placeholder={t('prop.buscar')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -267,7 +269,7 @@ export function PropiedadesPage() {
           <button 
             className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
             onClick={() => setViewMode('grid')}
-            title="Vista en cuadrícula"
+            title={t('prop.vistaGrid')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" />
@@ -279,7 +281,7 @@ export function PropiedadesPage() {
           <button 
             className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
-            title="Vista en lista"
+            title={t('prop.vistaLista')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="8" y1="6" x2="21" y2="6" />
@@ -305,20 +307,20 @@ export function PropiedadesPage() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto'
           }}></div>
-          <p style={{ marginTop: '16px', color: '#6b7280' }}>Cargando propiedades...</p>
+          <p style={{ marginTop: '16px', color: '#6b7280' }}>{t('prop.cargando')}</p>
         </div>
       )}
 
       {/* Empty state */}
       {!loading && propiedades.length === 0 && (
         <div style={{ textAlign: 'center', padding: '48px', color: '#6b7280' }}>
-          <p>No hay propiedades registradas</p>
+          <p>{t('prop.sinPropiedades')}</p>
           <button
             className="btn btn-primary"
             onClick={() => handleOpenModal()}
             style={{ marginTop: '16px' }}
           >
-            Agregar primera propiedad
+            {t('prop.agregarPrimera')}
           </button>
         </div>
       )}
@@ -397,7 +399,7 @@ export function PropiedadesPage() {
                 }}>
                   <span style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937' }}>
                     ${propiedad.rentaMensual.toLocaleString()}
-                    <span style={{ fontSize: '14px', fontWeight: '400', color: '#6b7280' }}>/mes</span>
+                    <span style={{ fontSize: '14px', fontWeight: '400', color: '#6b7280' }}>{t('prop.mes')}</span>
                   </span>
                 </div>
 
@@ -438,7 +440,7 @@ export function PropiedadesPage() {
                   ) : (
                     <>
                       <AvatarPlaceholder size={32} />
-                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>Sin inquilino</span>
+                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>{t('prop.sinInquilino')}</span>
                     </>
                   )}
                 </div>
@@ -454,7 +456,7 @@ export function PropiedadesPage() {
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
-                    Editar
+                    {t('prop.editarBtn')}
                   </button>
                   <button
                     onClick={() => handleDelete(propiedad.id)}
@@ -487,12 +489,12 @@ export function PropiedadesPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Propiedad</th>
-                <th>Direccion</th>
+                <th>{t('prop.titulo')}</th>
+                <th>{t('prop.direccion')}</th>
                 <th>Inquilino</th>
-                <th>Renta mensual</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th>{t('prop.rentaMensual')}</th>
+                <th>{t('prop.estado')}</th>
+                <th>{t('dash.acciones')}</th>
               </tr>
             </thead>
             <tbody>
@@ -546,7 +548,7 @@ export function PropiedadesPage() {
                         <span>{propiedad.inquilinoNombre} {propiedad.inquilinoApellido}</span>
                       </div>
                     ) : (
-                      <span className="no-tenant" style={{ color: '#9ca3af' }}>Sin inquilino</span>
+                      <span className="no-tenant" style={{ color: '#9ca3af' }}>{t('prop.sinInquilino')}</span>
                     )}
                   </td>
                   <td>
@@ -562,7 +564,7 @@ export function PropiedadesPage() {
                       <button
                         className="btn btn-icon"
                         onClick={() => handleOpenModal(propiedad)}
-                        title="Editar"
+                        title={t('prop.editarBtn')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -605,7 +607,7 @@ export function PropiedadesPage() {
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingPropiedad ? 'Editar propiedad' : 'Agregar propiedad'}</h2>
+              <h2>{editingPropiedad ? t('prop.editar') : t('prop.agregarTitle')}</h2>
               <button className="modal-close" onClick={handleCloseModal}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -616,7 +618,7 @@ export function PropiedadesPage() {
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label htmlFor="nombre">Nombre de la propiedad</label>
+                  <label htmlFor="nombre">{t('prop.nombre')}</label>
                   <input
                     type="text"
                     id="nombre"
@@ -629,7 +631,7 @@ export function PropiedadesPage() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="direccion">Direccion</label>
+                    <label htmlFor="direccion">{t('prop.direccion')}</label>
                     <input
                       type="text"
                       id="direccion"
@@ -640,7 +642,7 @@ export function PropiedadesPage() {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="ciudad">Ciudad</label>
+                    <label htmlFor="ciudad">{t('prop.ciudad')}</label>
                     <input
                       type="text"
                       id="ciudad"
@@ -654,7 +656,7 @@ export function PropiedadesPage() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="pais">Pais</label>
+                    <label htmlFor="pais">{t('prop.pais')}</label>
                     <input
                       type="text"
                       id="pais"
@@ -665,25 +667,25 @@ export function PropiedadesPage() {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="tipo">Tipo</label>
+                    <label htmlFor="tipo">{t('prop.tipo')}</label>
                     <select
                       id="tipo"
                       name="tipo"
                       value={formData.tipo}
                       onChange={handleInputChange}
                     >
-                      <option value="apartamento">Apartamento</option>
-                      <option value="casa">Casa</option>
-                      <option value="local">Local comercial</option>
-                      <option value="oficina">Oficina</option>
-                      <option value="otro">Otro</option>
+                      <option value="apartamento">{t('prop.apartamento')}</option>
+                      <option value="casa">{t('prop.casa')}</option>
+                      <option value="local">{t('prop.localComercial')}</option>
+                      <option value="oficina">{t('prop.oficina')}</option>
+                      <option value="otro">{t('prop.otro')}</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="rentaMensual">Renta mensual ($)</label>
+                    <label htmlFor="rentaMensual">{t('prop.rentaMensual')} ($)</label>
                     <input
                       type="number"
                       id="rentaMensual"
@@ -696,22 +698,22 @@ export function PropiedadesPage() {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="estado">Estado</label>
+                    <label htmlFor="estado">{t('prop.estado')}</label>
                     <select
                       id="estado"
                       name="estado"
                       value={formData.estado}
                       onChange={handleInputChange}
                     >
-                      <option value="disponible">Disponible</option>
-                      <option value="ocupada">Ocupada</option>
-                      <option value="mantenimiento">Mantenimiento</option>
+                      <option value="disponible">{t('prop.disponible')}</option>
+                      <option value="ocupada">{t('prop.ocupada')}</option>
+                      <option value="mantenimiento">{t('prop.mantenimiento')}</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="imagen">URL de imagen (opcional)</label>
+                  <label htmlFor="imagen">{t('prop.urlImagen')}</label>
                   <input
                     type="url"
                     id="imagen"
@@ -724,10 +726,10 @@ export function PropiedadesPage() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={submitting}>
-                  Cancelar
+                  {t('prop.cancelar')}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Guardando...' : editingPropiedad ? 'Guardar cambios' : 'Agregar propiedad'}
+                  {submitting ? t('common.guardando') : editingPropiedad ? t('prop.guardarCambios') : t('prop.agregarTitle')}
                 </button>
               </div>
             </form>

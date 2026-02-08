@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getSubscription, updateSubscription, cancelSubscription } from '../../../services/userProfileApi';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { UserSubscription } from '../../../types';
 
 export function SuscripcionPage() {
+  const { t } = useLanguage();
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -56,9 +58,9 @@ export function SuscripcionPage() {
 
   const getPlanLabel = (plan: string) => {
     switch (plan) {
-      case 'basico': return 'Básico';
-      case 'profesional': return 'Profesional';
-      case 'empresarial': return 'Empresarial';
+      case 'basico': return t('sub.basico');
+      case 'profesional': return t('sub.profesional');
+      case 'empresarial': return t('sub.empresarial');
       default: return plan;
     }
   };
@@ -83,19 +85,19 @@ export function SuscripcionPage() {
       )}
 
       <div className="profile-page-header">
-        <h1>Suscripción</h1>
-        <p className="profile-page-subtitle">Gestiona tu plan y pago</p>
+        <h1>{t('sub.titulo')}</h1>
+        <p className="profile-page-subtitle">{t('sub.subtitulo')}</p>
       </div>
 
       {/* Current Plan */}
       {currentPlan !== 'basico' && (
         <div className="profile-card subscription-current">
           <div className="subscription-current-left">
-            <span className="subscription-badge">Recomendado</span>
+            <span className="subscription-badge">{t('sub.recomendado')}</span>
             <h2 className="subscription-plan-name">{getPlanLabel(currentPlan)}</h2>
             <p className="subscription-plan-desc">
-              {currentPlan === 'profesional' && 'Para propietarios que quieren cobrar a tiempo'}
-              {currentPlan === 'empresarial' && 'Para administradores grandes'}
+              {currentPlan === 'profesional' && t('sub.paraPro')}
+              {currentPlan === 'empresarial' && t('sub.paraEnterprise')}
             </p>
             <ul className="subscription-features">
               {currentPlan === 'profesional' && (
@@ -118,7 +120,7 @@ export function SuscripcionPage() {
           <div className="subscription-current-right">
             {subscription?.tarjetaUltimos4 && (
               <div className="subscription-card-info">
-                <span className="card-label">Tarjeta de pago</span>
+                <span className="card-label">{t('sub.tarjetaPago')}</span>
                 <span className="card-number">•••• {subscription.tarjetaUltimos4}</span>
                 {subscription.tarjetaExpiracion && (
                   <span className="card-expiry">Válida hasta {subscription.tarjetaExpiracion}</span>
@@ -128,16 +130,16 @@ export function SuscripcionPage() {
             )}
             {subscription?.proximoPago && (
               <div className="subscription-next-payment">
-                <span>Próximo pago:</span>
+                <span>{t('sub.proximoPago')}</span>
                 <strong>{formatDate(subscription.proximoPago)}</strong>
               </div>
             )}
             <div className="subscription-actions">
               <button className="btn btn-danger-outline" onClick={handleCancelPlan}>
-                Cancelar plan
+                {t('sub.cancelarPlan')}
               </button>
               <button className="btn btn-outline">Me plan pago</button>
-              <button className="btn btn-primary">Cambiar plan</button>
+              <button className="btn btn-primary">{t('sub.cambiarPlan')}</button>
             </div>
           </div>
         </div>
@@ -147,9 +149,9 @@ export function SuscripcionPage() {
       <div className="subscription-plans">
         {/* Básico */}
         <div className={`subscription-plan-card ${currentPlan === 'basico' ? 'plan-active' : ''}`}>
-          <h3>Básico</h3>
-          <p className="plan-audience">Para propietarios pequeños</p>
-          <p className="plan-price"><strong>GRATIS</strong></p>
+          <h3>{t('sub.basico')}</h3>
+          <p className="plan-audience">{t('sub.paraSmall')}</p>
+          <p className="plan-price"><strong>{t('sub.gratis')}</strong></p>
           <ul className="plan-features">
             <li><span className="feature-check">✓</span> Hasta 2 propiedades</li>
             <li><span className="feature-check">✓</span> Gestión básica</li>
@@ -163,16 +165,16 @@ export function SuscripcionPage() {
             onClick={() => handleSelectPlan('basico')}
             disabled={currentPlan === 'basico'}
           >
-            {currentPlan === 'basico' ? 'Plan actual' : 'Elegir gratis'}
+            {currentPlan === 'basico' ? t('sub.planActual') : t('sub.elegirGratis')}
           </button>
         </div>
 
         {/* Profesional */}
         <div className={`subscription-plan-card plan-recommended ${currentPlan === 'profesional' ? 'plan-active' : ''}`}>
-          <span className="plan-badge">Recomendado</span>
-          <h3>Profesional</h3>
-          <p className="plan-price-amount">$249 <span className="plan-price-currency">MxN / mes</span></p>
-          <p className="plan-audience">Para propietarios que quieren cobrar a tiempo.</p>
+          <span className="plan-badge">{t('sub.recomendado')}</span>
+          <h3>{t('sub.profesional')}</h3>
+          <p className="plan-price-amount">{t('sub.profesionalPrecio')}</p>
+          <p className="plan-audience">{t('sub.paraPro')}.</p>
           <ul className="plan-features">
             <li><span className="feature-check">✓</span> Hasta 15 propiedades</li>
             <li><span className="feature-check">✓</span> Recordatorios automáticos (email)</li>
@@ -185,15 +187,15 @@ export function SuscripcionPage() {
             onClick={() => handleSelectPlan('profesional')}
             disabled={currentPlan === 'profesional'}
           >
-            {currentPlan === 'profesional' ? 'Plan actual' : 'Elegir Profesional'}
+            {currentPlan === 'profesional' ? t('sub.planActual') : t('sub.elegirPro')}
           </button>
         </div>
 
         {/* Empresarial */}
         <div className={`subscription-plan-card ${currentPlan === 'empresarial' ? 'plan-active' : ''}`}>
-          <h3 className="plan-enterprise-title">Empresarial</h3>
-          <p className="plan-price-amount">$999 <span className="plan-price-currency">MxN/mes</span></p>
-          <p className="plan-audience">Para administradores grandes</p>
+          <h3 className="plan-enterprise-title">{t('sub.empresarial')}</h3>
+          <p className="plan-price-amount">{t('sub.empresarialPrecio')}</p>
+          <p className="plan-audience">{t('sub.paraEnterprise')}</p>
           <ul className="plan-features">
             <li><span className="feature-check">✓</span> Propiedades ilimitadas</li>
             <li><span className="feature-check">✓</span> Automatización avanzada de cobros</li>
@@ -204,7 +206,7 @@ export function SuscripcionPage() {
             onClick={() => handleSelectPlan('empresarial')}
             disabled={currentPlan === 'empresarial'}
           >
-            {currentPlan === 'empresarial' ? 'Plan actual' : 'Elegir Empresarial'}
+            {currentPlan === 'empresarial' ? t('sub.planActual') : t('sub.elegirEnterprise')}
           </button>
         </div>
       </div>

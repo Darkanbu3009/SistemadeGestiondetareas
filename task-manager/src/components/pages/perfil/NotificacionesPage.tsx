@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getPreferences, updatePreferences, getSessions, closeSession, closeAllSessions } from '../../../services/userProfileApi';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { UserSession } from '../../../types';
 
 export function NotificacionesPage() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -86,8 +88,8 @@ export function NotificacionesPage() {
       )}
 
       <div className="profile-page-header">
-        <h1>Notificaciones</h1>
-        <p className="profile-page-subtitle">Administra las alertas y avisos</p>
+        <h1>{t('notif.titulo')}</h1>
+        <p className="profile-page-subtitle">{t('notif.subtitulo')}</p>
       </div>
 
       {/* Avisos por correo */}
@@ -97,9 +99,9 @@ export function NotificacionesPage() {
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-          <h2>Avisos por correo</h2>
+          <h2>{t('notif.avisosCorreo')}</h2>
         </div>
-        <p className="notif-section-desc">Elige qué avisos quieres recibir en tu correo electrónico</p>
+        <p className="notif-section-desc">{t('notif.avisosCorreoDesc')}</p>
 
         <div className="notif-list">
           {/* Recordatorios de pagos */}
@@ -112,8 +114,8 @@ export function NotificacionesPage() {
                 </svg>
               </div>
               <div>
-                <span className="notif-item-title">Recordatorios de pagos</span>
-                <p className="notif-item-desc">Recibirás un aviso cuando se acerque la fecha de cobro.</p>
+                <span className="notif-item-title">{t('notif.recordatoriosPagos')}</span>
+                <p className="notif-item-desc">{t('notif.recordatoriosPagosDesc')}</p>
               </div>
             </div>
             <label className="toggle-switch">
@@ -139,8 +141,8 @@ export function NotificacionesPage() {
                 </svg>
               </div>
               <div>
-                <span className="notif-item-title">Avisos de vencimiento</span>
-                <p className="notif-item-desc">Recibirás alertas de contratos próximos a vencer.</p>
+                <span className="notif-item-title">{t('notif.avisosVencimiento')}</span>
+                <p className="notif-item-desc">{t('notif.avisosVencimientoDesc')}</p>
               </div>
             </div>
             <label className="toggle-switch">
@@ -166,8 +168,8 @@ export function NotificacionesPage() {
                 </svg>
               </div>
               <div>
-                <span className="notif-item-title">Confirmaciones de reservación</span>
-                <p className="notif-item-desc">Recibirás nuevas confirmaciones y actualizaciones.</p>
+                <span className="notif-item-title">{t('notif.confirmacionesReservacion')}</span>
+                <p className="notif-item-desc">{t('notif.confirmacionesReservacionDesc')}</p>
               </div>
             </div>
             <label className="toggle-switch">
@@ -195,7 +197,7 @@ export function NotificacionesPage() {
                 </svg>
               </div>
               <div>
-                <span className="notif-item-title">Resumen mensual</span>
+                <span className="notif-item-title">{t('notif.resumenMensual')}</span>
               </div>
             </div>
             <label className="toggle-switch">
@@ -221,11 +223,11 @@ export function NotificacionesPage() {
             <line x1="8" y1="21" x2="16" y2="21" />
             <line x1="12" y1="17" x2="12" y2="21" />
           </svg>
-          <h2>Actividad de cuenta</h2>
+          <h2>{t('notif.actividadCuenta')}</h2>
         </div>
 
         {sessions.length === 0 ? (
-          <p className="profile-empty-text">No hay sesiones registradas</p>
+          <p className="profile-empty-text">{t('notif.sinSesiones')}</p>
         ) : (
           <div className="notif-sessions-list">
             {sessions.map((session) => (
@@ -239,7 +241,7 @@ export function NotificacionesPage() {
                     </svg>
                   </div>
                   <div>
-                    <span className="notif-item-title">Inicio de sesión en nuevos dispositivos</span>
+                    <span className="notif-item-title">{t('notif.inicioSesionNuevo')}</span>
                     <p className="notif-item-desc">
                       {session.ubicacion || session.ciudad || 'Ubicación desconocida'}
                     </p>
@@ -258,7 +260,7 @@ export function NotificacionesPage() {
                 <div className="notif-session-actions">
                   {session.activa && (
                     <button className="btn btn-outline btn-sm" onClick={() => handleCloseSession(session.id)}>
-                      Cerrar sesión
+                      {t('notif.cerrarSesion')}
                     </button>
                   )}
                 </div>
@@ -277,7 +279,7 @@ export function NotificacionesPage() {
               <span>¿Sesiones sospechosas? <a href="#" onClick={(e) => { e.preventDefault(); handleCloseAllSessions(); }}>Cerrar todas las demás sesiones</a></span>
             </div>
             <button className="btn btn-danger-outline btn-sm" onClick={handleCloseAllSessions}>
-              Cerrar todas las sesiones
+              {t('notif.cerrarTodas')}
             </button>
           </div>
         )}
