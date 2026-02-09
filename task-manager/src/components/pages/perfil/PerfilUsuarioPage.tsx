@@ -4,7 +4,7 @@ import { useLanguage } from '../../../i18n/LanguageContext';
 import type { UserProfileData } from '../../../types';
 
 export function PerfilUsuarioPage() {
-  const { t } = useLanguage();
+  const { t, setLanguage: setAppLanguage } = useLanguage();
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,6 +49,9 @@ export function PerfilUsuarioPage() {
       setNotificacionesCorreo(pref.notificacionesCorreo);
       setIdioma(pref.idioma);
       setZonaHoraria(pref.zonaHoraria);
+      // Sync the app language context from the backend preference
+      const lang = pref.idioma === 'en' ? 'en' : 'es';
+      setAppLanguage(lang);
     } catch {
       setMessage({ type: 'error', text: t('perfil.errorCargar') });
     } finally {
@@ -322,7 +325,7 @@ export function PerfilUsuarioPage() {
               />
             </div>
             <button className="btn btn-primary" onClick={handleChangePassword} disabled={saving}>
-              {t('seguridad.actualizarPassword')}
+              {t('seguridad.actualizar')}
             </button>
           </div>
         </div>
@@ -359,8 +362,11 @@ export function PerfilUsuarioPage() {
                 <select
                   value={idioma}
                   onChange={(e) => {
-                    setIdioma(e.target.value);
-                    updatePreferences({ idioma: e.target.value });
+                    const value = e.target.value;
+                    setIdioma(value);
+                    updatePreferences({ idioma: value });
+                    const lang = value === 'en' ? 'en' : 'es';
+                    setAppLanguage(lang);
                   }}
                 >
                   <option value="es">Español</option>

@@ -60,6 +60,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'perfil.fotoActualizada': 'Foto de perfil actualizada',
     'perfil.fotoEliminada': 'Foto de perfil eliminada',
     'perfil.errorFoto': 'Error al actualizar la foto',
+    'perfil.errorCargar': 'Error al cargar el perfil',
+    'perfil.actualizado': 'Perfil actualizado correctamente',
+    'perfil.errorActualizar': 'Error al actualizar el perfil',
+    'perfil.guardando': 'Guardando...',
+    'perfil.cargando': 'Cargando...',
 
     // Security
     'seguridad.titulo': 'Seguridad',
@@ -81,6 +86,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'seguridad.noCoinciden': 'Las contraseñas no coinciden',
     'seguridad.minimo8': 'La contraseña debe tener al menos 8 caracteres',
     'seguridad.passwordActualizada': 'Contraseña actualizada correctamente',
+    'seguridad.passwordCambiada': 'Contraseña actualizada correctamente',
     'seguridad.errorPassword': 'Error al cambiar la contraseña',
     'seguridad.sesionCerrada': 'Sesión cerrada',
     'seguridad.errorCerrar': 'Error al cerrar la sesión',
@@ -393,6 +399,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'danger.confirmar': '¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer.',
     'danger.exito': 'Cuenta eliminada correctamente',
     'danger.error': 'Error al eliminar la cuenta',
+    'danger.errorEliminar': 'Error al eliminar la cuenta',
 
     // Common
     'common.de': 'de',
@@ -462,6 +469,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'perfil.fotoActualizada': 'Profile photo updated',
     'perfil.fotoEliminada': 'Profile photo removed',
     'perfil.errorFoto': 'Error updating photo',
+    'perfil.errorCargar': 'Error loading profile',
+    'perfil.actualizado': 'Profile updated successfully',
+    'perfil.errorActualizar': 'Error updating profile',
+    'perfil.guardando': 'Saving...',
+    'perfil.cargando': 'Loading...',
 
     // Security
     'seguridad.titulo': 'Security',
@@ -483,6 +495,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'seguridad.noCoinciden': 'Passwords do not match',
     'seguridad.minimo8': 'Password must be at least 8 characters',
     'seguridad.passwordActualizada': 'Password updated successfully',
+    'seguridad.passwordCambiada': 'Password updated successfully',
     'seguridad.errorPassword': 'Error changing password',
     'seguridad.sesionCerrada': 'Session closed',
     'seguridad.errorCerrar': 'Error closing session',
@@ -795,6 +808,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'danger.confirmar': 'Are you sure you want to delete your account? This action cannot be undone.',
     'danger.exito': 'Account deleted successfully',
     'danger.error': 'Error deleting account',
+    'danger.errorEliminar': 'Error deleting account',
 
     // Common
     'common.de': 'of',
