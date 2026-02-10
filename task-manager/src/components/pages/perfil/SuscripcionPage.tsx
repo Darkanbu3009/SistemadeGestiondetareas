@@ -4,7 +4,7 @@ import { useLanguage } from '../../../i18n/LanguageContext';
 import type { UserSubscription } from '../../../types';
 
 export function SuscripcionPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -33,27 +33,28 @@ export function SuscripcionPage() {
     try {
       const res = await updateSubscription({ plan });
       setSubscription(res.data);
-      showMessage('success', `Plan cambiado a ${plan}`);
+      showMessage('success', `${t('sub.planCambiado')} ${getPlanLabel(plan)}`);
     } catch {
-      showMessage('error', 'Error al cambiar de plan');
+      showMessage('error', t('sub.errorCambiarPlan'));
     }
   };
 
   const handleCancelPlan = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas cancelar tu suscripción?')) return;
+    if (!window.confirm(t('sub.confirmarCancelar'))) return;
     try {
       await cancelSubscription();
       await loadSubscription();
-      showMessage('success', 'Suscripción cancelada');
+      showMessage('success', t('sub.cancelada'));
     } catch {
-      showMessage('error', 'Error al cancelar la suscripción');
+      showMessage('error', t('sub.errorCancelar'));
     }
   };
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+    const locale = language === 'en' ? 'en-US' : 'es-MX';
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   const getPlanLabel = (plan: string) => {
@@ -69,7 +70,7 @@ export function SuscripcionPage() {
     return (
       <div className="profile-page">
         <div className="loading-spinner"></div>
-        <p>Cargando...</p>
+        <p>{t('common.cargando')}</p>
       </div>
     );
   }
@@ -102,17 +103,17 @@ export function SuscripcionPage() {
             <ul className="subscription-features">
               {currentPlan === 'profesional' && (
                 <>
-                  <li><span className="feature-check">✓</span> Automatiza recordatorios de renta</li>
-                  <li><span className="feature-check">✓</span> Alertas de pagos atrasados</li>
-                  <li><span className="feature-check">✓</span> Reportes financieros mensuales</li>
-                  <li><span className="feature-check">✓</span> Exportación a Excel / PDF</li>
+                  <li><span className="feature-check">✓</span> {t('sub.featAutoRecordatorios')}</li>
+                  <li><span className="feature-check">✓</span> {t('sub.featAlertasAtrasados')}</li>
+                  <li><span className="feature-check">✓</span> {t('sub.featReportesMensuales')}</li>
+                  <li><span className="feature-check">✓</span> {t('sub.featExportExcelPdf')}</li>
                 </>
               )}
               {currentPlan === 'empresarial' && (
                 <>
-                  <li><span className="feature-check">✓</span> Propiedades ilimitadas</li>
-                  <li><span className="feature-check">✓</span> Automatización avanzada de cobros</li>
-                  <li><span className="feature-check">✓</span> Múltiples usuarios y roles</li>
+                  <li><span className="feature-check">✓</span> {t('sub.featPropsIlimitadas')}</li>
+                  <li><span className="feature-check">✓</span> {t('sub.featAutoAvanzada')}</li>
+                  <li><span className="feature-check">✓</span> {t('sub.featMultiUsuarios')}</li>
                 </>
               )}
             </ul>
@@ -123,9 +124,9 @@ export function SuscripcionPage() {
                 <span className="card-label">{t('sub.tarjetaPago')}</span>
                 <span className="card-number">•••• {subscription.tarjetaUltimos4}</span>
                 {subscription.tarjetaExpiracion && (
-                  <span className="card-expiry">Válida hasta {subscription.tarjetaExpiracion}</span>
+                  <span className="card-expiry">{t('sub.validaHasta')} {subscription.tarjetaExpiracion}</span>
                 )}
-                <button className="btn btn-outline btn-sm">Actualizar tarjeta</button>
+                <button className="btn btn-outline btn-sm">{t('sub.actualizarTarjeta')}</button>
               </div>
             )}
             {subscription?.proximoPago && (
@@ -138,7 +139,7 @@ export function SuscripcionPage() {
               <button className="btn btn-danger-outline" onClick={handleCancelPlan}>
                 {t('sub.cancelarPlan')}
               </button>
-              <button className="btn btn-outline">Me plan pago</button>
+              <button className="btn btn-outline">{t('sub.miPlanPago')}</button>
               <button className="btn btn-primary">{t('sub.cambiarPlan')}</button>
             </div>
           </div>
@@ -153,12 +154,12 @@ export function SuscripcionPage() {
           <p className="plan-audience">{t('sub.paraSmall')}</p>
           <p className="plan-price"><strong>{t('sub.gratis')}</strong></p>
           <ul className="plan-features">
-            <li><span className="feature-check">✓</span> Hasta 2 propiedades</li>
-            <li><span className="feature-check">✓</span> Gestión básica</li>
-            <li><span className="feature-check">✓</span> Registro manual de pagos</li>
-            <li><span className="feature-check">✓</span> Vista de contratos</li>
-            <li><span className="feature-cross">✕</span> Sin recordatorios automáticos</li>
-            <li><span className="feature-cross">✕</span> Sin reportes financieros</li>
+            <li><span className="feature-check">✓</span> {t('sub.featHasta2Props')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featGestionBasica')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featRegistroManual')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featVistaContratos')}</li>
+            <li><span className="feature-cross">✕</span> {t('sub.featSinRecordatorios')}</li>
+            <li><span className="feature-cross">✕</span> {t('sub.featSinReportes')}</li>
           </ul>
           <button
             className={`btn ${currentPlan === 'basico' ? 'btn-outline btn-disabled' : 'btn-outline'}`}
@@ -176,11 +177,11 @@ export function SuscripcionPage() {
           <p className="plan-price-amount">{t('sub.profesionalPrecio')}</p>
           <p className="plan-audience">{t('sub.paraPro')}.</p>
           <ul className="plan-features">
-            <li><span className="feature-check">✓</span> Hasta 15 propiedades</li>
-            <li><span className="feature-check">✓</span> Recordatorios automáticos (email)</li>
-            <li><span className="feature-check">✓</span> Alertas de pagos atrasados</li>
-            <li><span className="feature-check">✓</span> Exportaciones Excel / PDF</li>
-            <li><span className="feature-check">✓</span> Soporte prioritario</li>
+            <li><span className="feature-check">✓</span> {t('sub.featHasta15Props')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featRecordatoriosEmail')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featAlertasAtrasados')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featExportaciones')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featSoportePrioritario')}</li>
           </ul>
           <button
             className={`btn ${currentPlan === 'profesional' ? 'btn-primary btn-disabled' : 'btn-primary'}`}
@@ -197,9 +198,9 @@ export function SuscripcionPage() {
           <p className="plan-price-amount">{t('sub.empresarialPrecio')}</p>
           <p className="plan-audience">{t('sub.paraEnterprise')}</p>
           <ul className="plan-features">
-            <li><span className="feature-check">✓</span> Propiedades ilimitadas</li>
-            <li><span className="feature-check">✓</span> Automatización avanzada de cobros</li>
-            <li><span className="feature-check">✓</span> Múltiples usuarios y roles</li>
+            <li><span className="feature-check">✓</span> {t('sub.featPropsIlimitadas')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featAutoAvanzada')}</li>
+            <li><span className="feature-check">✓</span> {t('sub.featMultiUsuarios')}</li>
           </ul>
           <button
             className={`btn ${currentPlan === 'empresarial' ? 'btn-enterprise btn-disabled' : 'btn-enterprise'}`}
