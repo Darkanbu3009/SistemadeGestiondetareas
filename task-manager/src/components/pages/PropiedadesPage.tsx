@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Propiedad, PropiedadFormData } from '../../types';
 import {
   getAllPropiedades,
@@ -8,6 +8,7 @@ import {
 } from '../../services/propiedadService';
 import { getInquilinosByPropiedad } from '../../services/inquilinosService';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { PropertyMap } from '../map/PropertyMap';
 
 const emptyFormData: PropiedadFormData = {
   nombre: '',
@@ -20,7 +21,7 @@ const emptyFormData: PropiedadFormData = {
   imagen: '',
 };
 
-type ViewMode = 'grid' | 'list';
+type ViewMode = 'grid' | 'list' | 'map';
 
 // Tipo extendido para incluir inquilino
 interface PropiedadConInquilino extends Propiedad {
@@ -40,6 +41,8 @@ export function PropiedadesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+  const mapListRef = useRef<HTMLDivElement>(null);
 
   // Load properties from API and fetch associated tenants
   const loadPropiedades = useCallback(async () => {
@@ -278,7 +281,7 @@ export function PropiedadesPage() {
               <rect x="3" y="14" width="7" height="7" />
             </svg>
           </button>
-          <button 
+          <button
             className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
             title={t('prop.vistaLista')}
@@ -290,6 +293,16 @@ export function PropiedadesPage() {
               <line x1="3" y1="6" x2="3.01" y2="6" />
               <line x1="3" y1="12" x2="3.01" y2="12" />
               <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+          </button>
+          <button
+            className={`view-btn ${viewMode === 'map' ? 'active' : ''}`}
+            onClick={() => setViewMode('map')}
+            title={t('prop.vistaMapa')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
             </svg>
           </button>
         </div>
@@ -590,8 +603,190 @@ export function PropiedadesPage() {
         </div>
       )}
 
+      {/* Map View */}
+      {!loading && propiedades.length > 0 && viewMode === 'map' && (
+        <div style={{
+          display: 'flex',
+          gap: '20px',
+          marginTop: '24px',
+          height: 'calc(100vh - 220px)',
+          minHeight: '500px',
+        }}>
+          {/* Property cards sidebar */}
+          <div
+            ref={mapListRef}
+            style={{
+              width: '380px',
+              minWidth: '380px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              paddingRight: '8px',
+            }}
+          >
+            {filteredPropiedades.map((propiedad) => {
+              const isSelected = propiedad.id === selectedPropertyId;
+              return (
+                <div
+                  key={propiedad.id}
+                  id={`map-card-${propiedad.id}`}
+                  onClick={() => setSelectedPropertyId(propiedad.id)}
+                  style={{
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    border: isSelected ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                    boxShadow: isSelected
+                      ? '0 4px 12px rgba(59,130,246,0.15)'
+                      : '0 1px 3px rgba(0,0,0,0.08)',
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: '12px', padding: '12px' }}>
+                    {/* Thumbnail */}
+                    <div style={{
+                      width: '100px',
+                      minWidth: '100px',
+                      height: '80px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      backgroundColor: '#f3f4f6',
+                    }}>
+                      {propiedad.imagen ? (
+                        <img
+                          src={propiedad.imagen}
+                          alt={propiedad.nombre}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={handleImageError}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <polyline points="9,22 9,12 15,12 15,22" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Details */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: '4px',
+                      }}>
+                        <h4 style={{
+                          margin: 0,
+                          fontSize: '15px',
+                          fontWeight: 600,
+                          color: '#1f2937',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '160px',
+                        }}>
+                          {propiedad.nombre}
+                        </h4>
+                        <span className={`badge ${getEstadoClass(propiedad.estado)}`} style={{ fontSize: '11px', padding: '2px 8px' }}>
+                          {getEstadoLabel(propiedad.estado)}
+                        </span>
+                      </div>
+
+                      <p style={{
+                        margin: '0 0 6px 0',
+                        fontSize: '13px',
+                        color: '#6b7280',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {propiedad.direccion}, {propiedad.ciudad}
+                      </p>
+
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}>
+                        <span style={{ fontSize: '16px', fontWeight: 700, color: '#1f2937' }}>
+                          ${propiedad.rentaMensual.toLocaleString()}
+                          <span style={{ fontSize: '12px', fontWeight: 400, color: '#6b7280' }}>{t('prop.mes')}</span>
+                        </span>
+
+                        {propiedad.inquilinoNombre ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {propiedad.inquilinoAvatar ? (
+                              <img
+                                src={propiedad.inquilinoAvatar}
+                                alt={propiedad.inquilinoNombre}
+                                style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }}
+                                onError={handleImageError}
+                              />
+                            ) : (
+                              <AvatarPlaceholder size={22} />
+                            )}
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                              {propiedad.inquilinoNombre}
+                            </span>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                            {t('prop.sinInquilino')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredPropiedades.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '32px 16px',
+                color: '#6b7280',
+                fontSize: '14px',
+              }}>
+                {t('prop.sinPropiedades')}
+              </div>
+            )}
+          </div>
+
+          {/* Map container */}
+          <div style={{
+            flex: 1,
+            borderRadius: '12px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+          }}>
+            <PropertyMap
+              propiedades={filteredPropiedades}
+              selectedPropertyId={selectedPropertyId}
+              onPropertySelect={(id) => {
+                setSelectedPropertyId(id);
+                const card = document.getElementById(`map-card-${id}`);
+                if (card && mapListRef.current) {
+                  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Pagination */}
-      {!loading && filteredPropiedades.length > 0 && (
+      {!loading && filteredPropiedades.length > 0 && viewMode !== 'map' && (
         <div className="table-pagination">
           <span className="pagination-info">1-{filteredPropiedades.length} de {filteredPropiedades.length}</span>
           <div className="pagination-controls">
