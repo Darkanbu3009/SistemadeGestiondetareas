@@ -190,24 +190,6 @@ export function PropiedadesPage() {
     target.style.display = 'none';
   };
 
-  // Placeholder para imágenes
-  const PropertyPlaceholder = () => (
-    <div className="property-placeholder" style={{
-      width: '48px',
-      height: '48px',
-      backgroundColor: '#e5e7eb',
-      borderRadius: '8px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <polyline points="9,22 9,12 15,12 15,22" />
-      </svg>
-    </div>
-  );
-
   // Avatar placeholder
   const AvatarPlaceholder = ({ size = 32 }: { size?: number }) => (
     <div style={{
