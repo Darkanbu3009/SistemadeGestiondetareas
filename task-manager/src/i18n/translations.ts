@@ -248,6 +248,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'prop.editarBtn': 'Editar',
     'prop.sinInquilino': 'Sin inquilino',
     'prop.mes': '/mes',
+    'prop.vistaMapa': 'Vista de mapa',
 
     // Tenants
     'inq.titulo': 'Inquilinos',
@@ -685,6 +686,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'prop.editarBtn': 'Edit',
     'prop.sinInquilino': 'No tenant',
     'prop.mes': '/mo',
+    'prop.vistaMapa': 'Map view',
 
     // Tenants
     'inq.titulo': 'Tenants',
