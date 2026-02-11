@@ -215,6 +215,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'dash.sinRentas': 'No hay rentas pendientes o atrasadas. ¡Todo al día!',
     'dash.sinPropiedades': 'No hay propiedades disponibles actualmente.',
     'dash.disponible': 'Disponible',
+    'dash.chartInquilinos': 'Inquilinos Activos',
+    'dash.chartIngresos': 'Distribución de Ingresos',
+    'dash.inquilinosAlDia': 'Al día',
+    'dash.inquilinosMorosos': 'Morosos',
+    'dash.ingresosCobrados': 'Ingresos cobrados',
+    'dash.rentasPendientesChart': 'Rentas pendientes',
 
     // Properties
     'prop.titulo': 'Propiedades',
@@ -653,6 +659,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'dash.sinRentas': 'No pending or overdue rents. All caught up!',
     'dash.sinPropiedades': 'No properties currently available.',
     'dash.disponible': 'Available',
+    'dash.chartInquilinos': 'Active Tenants',
+    'dash.chartIngresos': 'Income Distribution',
+    'dash.inquilinosAlDia': 'Up to date',
+    'dash.inquilinosMorosos': 'Overdue',
+    'dash.ingresosCobrados': 'Collected income',
+    'dash.rentasPendientesChart': 'Pending rents',
 
     // Properties
     'prop.titulo': 'Properties',

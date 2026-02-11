@@ -580,6 +580,23 @@ body {
   font-weight: 600;
 }
 
+/* Dashboard Charts */
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.chart-section {
+  min-height: 0;
+}
+
+.chart-container {
+  width: 100%;
+  height: 300px;
+}
+
 .month-selector {
   display: flex;
   align-items: center;
@@ -1551,6 +1568,10 @@ body {
   .stats-grid,
   .stats-grid.stats-4 {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .dashboard-charts-grid {
+    grid-template-columns: 1fr;
   }
 
   .table-toolbar {
