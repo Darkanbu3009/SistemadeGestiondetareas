@@ -6,6 +6,10 @@ import {
   getPropiedadesDestacadas,
 } from '../../services/dashboardService';
 import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  PieChart, Pie, Legend,
+} from 'recharts';
 
 export function DashboardPage() {
   const { t } = useLanguage();
@@ -173,6 +177,110 @@ export function DashboardPage() {
             <span className="stat-value">{stats.inquilinosActivos}</span>
           </div>
         </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className="dashboard-charts-grid">
+        {/* Bar Chart - Inquilinos Activos */}
+        <section className="content-section chart-section">
+          <h2 className="section-title">{t('dash.chartInquilinos')}</h2>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={[
+                  {
+                    name: t('dash.inquilinosAlDia'),
+                    value: stats.inquilinosActivos - stats.morosos,
+                  },
+                  {
+                    name: t('dash.inquilinosMorosos'),
+                    value: stats.morosos,
+                  },
+                ]}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 13 }}
+                  axisLine={{ stroke: 'var(--border-color)' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 13 }}
+                  axisLine={{ stroke: 'var(--border-color)' }}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    boxShadow: 'var(--shadow-sm)',
+                  }}
+                  labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={60}>
+                  <Cell fill="#10b981" />
+                  <Cell fill="#ef4444" />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        {/* Pie Chart - Ingresos vs Rentas Pendientes */}
+        <section className="content-section chart-section">
+          <h2 className="section-title">{t('dash.chartIngresos')}</h2>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={[
+                    {
+                      name: t('dash.ingresosCobrados'),
+                      value: stats.ingresosMes,
+                    },
+                    {
+                      name: t('dash.rentasPendientesChart'),
+                      value: stats.rentasPendientes,
+                    },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={4}
+                  dataKey="value"
+                  label={({ name, percent }) =>
+                    `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`
+                  }
+                  labelLine={true}
+                >
+                  <Cell fill="#2563eb" />
+                  <Cell fill="#f59e0b" />
+                </Pie>
+                <Tooltip
+                  formatter={(value) => `$${Number(value).toLocaleString()}`}
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    boxShadow: 'var(--shadow-sm)',
+                  }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  iconType="circle"
+                  formatter={(value: string) => (
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{value}</span>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
       </div>
 
       {/* Rentas Pendientes Table */}
