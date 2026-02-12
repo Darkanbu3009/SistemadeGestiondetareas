@@ -83,6 +83,16 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
            "LOWER(i.apellido) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Pago> searchByUser(@Param("user") User user, @Param("search") String search, Pageable pageable);
 
+    // Count distinct properties with payments in a given month/year
+    @Query("SELECT COUNT(DISTINCT p.propiedad) FROM Pago p WHERE p.user = :user " +
+           "AND MONTH(p.fechaVencimiento) = :month AND YEAR(p.fechaVencimiento) = :year")
+    Long countDistinctPropiedadesByUserAndMonth(@Param("user") User user, @Param("month") int month, @Param("year") int year);
+
+    // Count distinct tenants with payments in a given month/year
+    @Query("SELECT COUNT(DISTINCT p.inquilino) FROM Pago p WHERE p.user = :user " +
+           "AND MONTH(p.fechaVencimiento) = :month AND YEAR(p.fechaVencimiento) = :year")
+    Long countDistinctInquilinosByUserAndMonth(@Param("user") User user, @Param("month") int month, @Param("year") int year);
+
     // DELETE methods for cascade deletion
     @Modifying
     @Transactional

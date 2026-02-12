@@ -78,11 +78,11 @@ public class DashboardController {
         // Get pending rents filtered by month/year
         BigDecimal rentasPendientes = pagoService.sumPendientes(user, targetMonth, targetYear);
 
-        // Get total properties
-        Long totalPropiedades = propiedadService.countByUser(user);
+        // Get total properties filtered by month/year (properties with payments in that month)
+        Long totalPropiedades = pagoService.countPropiedadesByMonth(user, targetMonth, targetYear);
 
-        // Get active tenants
-        Long inquilinosActivos = inquilinoService.countActiveByUser(user);
+        // Get active tenants filtered by month/year (tenants with payments in that month)
+        Long inquilinosActivos = pagoService.countInquilinosByMonth(user, targetMonth, targetYear);
 
         // Get delinquent tenants count filtered by month/year
         Long morosos = pagoService.countMorosos(user, targetMonth, targetYear);
