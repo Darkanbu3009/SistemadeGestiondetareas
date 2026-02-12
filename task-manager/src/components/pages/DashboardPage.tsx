@@ -69,7 +69,7 @@ export function DashboardPage() {
   // Tooltip formatter for stacked bar chart (income/pending)
   const stackedTooltipFormatter: TooltipProps<number, string>['formatter'] =
   useCallback(
-    (value: number | undefined, name: string) => {
+    (value: number | undefined, name: string | undefined) => {
       const label =
         name === 'income'
           ? t('dash.ingresosMes')
