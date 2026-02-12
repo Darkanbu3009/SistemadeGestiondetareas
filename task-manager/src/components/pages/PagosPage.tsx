@@ -197,11 +197,11 @@ export function PagosPage() {
       .filter((p) => p.estado === 'pagado')
       .reduce((sum, p) => sum + (p.monto || 0), 0);
 
-    const rentasPendientes = allPagos
+    const rentasPendientes = filteredByMonth
       .filter((p) => p.estado === 'pendiente' || p.estado === 'atrasado')
       .reduce((sum, p) => sum + (p.monto || 0), 0);
 
-    const morosos = allPagos.filter((p) => p.estado === 'atrasado').length;
+    const morosos = filteredByMonth.filter((p) => p.estado === 'atrasado').length;
 
     setStats({
       ingresosMes,
@@ -546,7 +546,7 @@ export function PagosPage() {
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
             <span className="stat-label">{t('pag.ingresosMes')}</span>
-            <span className="stat-icon" style={{ color: '#10b981' }}>
+            <span className="stat-icon-badge stat-icon-green">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="12" y1="1" x2="12" y2="23" />
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -559,10 +559,10 @@ export function PagosPage() {
         </div>
 
         {/* Rentas pendientes */}
-        <div className="stat-card stat-card-bordered stat-card-warning">
+        <div className="stat-card stat-card-bordered">
           <div className="stat-header">
             <span className="stat-label">{t('pag.rentasPendientes')}</span>
-            <span className="stat-icon" style={{ color: '#3b82f6' }}>
+            <span className="stat-icon-badge stat-icon-orange">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12,6 12,12 16,14" />
@@ -578,7 +578,7 @@ export function PagosPage() {
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
             <span className="stat-label">{t('pag.morosos')}</span>
-            <span className="stat-icon" style={{ color: '#ef4444' }}>
+            <span className="stat-icon-badge stat-icon-red">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" />
