@@ -23,6 +23,7 @@ export function DashboardPage() {
   });
   const [rentasPendientes, setRentasPendientes] = useState<Pago[]>([]);
   const [propiedadesDestacadas, setPropiedadesDestacadas] = useState<Propiedad[]>([]);
+  const [monthlyData, setMonthlyData] = useState<{ month: string; income: number; pending: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,25 +37,53 @@ export function DashboardPage() {
     return now.getFullYear();
   });
 
+  const getMonthLabel = useCallback((m: number) => {
+    const keys = [
+      'mes.enero', 'mes.febrero', 'mes.marzo', 'mes.abril',
+      'mes.mayo', 'mes.junio', 'mes.julio', 'mes.agosto',
+      'mes.septiembre', 'mes.octubre', 'mes.noviembre', 'mes.diciembre',
+    ];
+    return t(keys[m - 1]).substring(0, 3);
+  }, [t]);
+
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [statsData, rentasData, propiedadesData] = await Promise.all([
+      // Build list of last 6 months ending at the selected month
+      const months: { m: number; y: number }[] = [];
+      let m = selectedMonth;
+      let y = selectedYear;
+      for (let i = 0; i < 6; i++) {
+        months.unshift({ m, y });
+        m--;
+        if (m === 0) { m = 12; y--; }
+      }
+
+      const [statsData, rentasData, propiedadesData, ...monthlyStats] = await Promise.all([
         getDashboardStats(selectedMonth, selectedYear),
         getRentasPendientes(selectedMonth, selectedYear),
         getPropiedadesDestacadas(),
+        ...months.map(({ m, y }) => getDashboardStats(m, y).catch(() => ({ ingresosMes: 0, rentasPendientes: 0 }))),
       ]);
       setStats(statsData);
       setRentasPendientes(rentasData);
       setPropiedadesDestacadas(propiedadesData);
+
+      setMonthlyData(
+        months.map(({ m }, i) => ({
+          month: getMonthLabel(m),
+          income: (monthlyStats[i] as DashboardStats).ingresosMes ?? 0,
+          pending: (monthlyStats[i] as DashboardStats).rentasPendientes ?? 0,
+        }))
+      );
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError(err instanceof Error ? err.message : 'Error al cargar los datos del dashboard');
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, getMonthLabel]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -286,7 +315,25 @@ export function DashboardPage() {
                 <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={60}>
                   <Cell fill="#3b82f6" />
                   <Cell fill="#f59e0b" />
-                  <LabelList dataKey="value" position="top" style={{ fill: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }} />
+                  <LabelList
+                    dataKey="value"
+                    position="top"
+                    content={({ x, y, width, value, index }: { x?: number; y?: number; width?: number; value?: number; index?: number }) => {
+                      const colors = ['#3b82f6', '#f59e0b'];
+                      return (
+                        <text
+                          x={(x ?? 0) + (width ?? 0) / 2}
+                          y={(y ?? 0) - 8}
+                          textAnchor="middle"
+                          fill={colors[index ?? 0]}
+                          fontWeight={700}
+                          fontSize={14}
+                        >
+                          {value}
+                        </text>
+                      );
+                    }}
+                  />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -345,6 +392,55 @@ export function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {/* Stacked Bar Chart - Monthly Income vs Pending Rents */}
+      <section className="content-section chart-section">
+        <h2 className="section-title">{t('dash.chartIngresosVsPendientes')}</h2>
+        <div className="chart-container">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart
+              data={monthlyData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: 'var(--text-secondary)', fontSize: 13 }}
+                axisLine={{ stroke: 'var(--border-color)' }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: 'var(--text-secondary)', fontSize: 13 }}
+                axisLine={{ stroke: 'var(--border-color)' }}
+                tickLine={false}
+                tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
+              />
+              <Tooltip
+                formatter={(value: number, name: string) => [
+                  `$${Number(value).toLocaleString()}`,
+                  name === 'income' ? t('dash.ingresosMes') : t('dash.rentasPendientes'),
+                ]}
+                contentStyle={{
+                  backgroundColor: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+                labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+              />
+              <Legend
+                formatter={(value: string) => (
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                    {value === 'income' ? t('dash.ingresosMes') : t('dash.rentasPendientes')}
+                  </span>
+                )}
+              />
+              <Bar dataKey="income" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="pending" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
       {/* Rentas Pendientes Table */}
       <section className="content-section">
