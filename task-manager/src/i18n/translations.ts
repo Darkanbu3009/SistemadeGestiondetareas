@@ -221,6 +221,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'dash.inquilinosMorosos': 'Morosos',
     'dash.ingresosCobrados': 'Ingresos cobrados',
     'dash.rentasPendientesChart': 'Rentas pendientes',
+    'dash.chartIngresosVsPendientes': 'Ingresos Mensuales vs Rentas Pendientes',
 
     // Properties
     'prop.titulo': 'Propiedades',
@@ -665,6 +666,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'dash.inquilinosMorosos': 'Overdue',
     'dash.ingresosCobrados': 'Collected income',
     'dash.rentasPendientesChart': 'Pending rents',
+    'dash.chartIngresosVsPendientes': 'Monthly Income vs Pending Rents',
 
     // Properties
     'prop.titulo': 'Properties',
