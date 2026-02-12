@@ -67,13 +67,18 @@ export function DashboardPage() {
   }, []);
 
   // Tooltip formatter for stacked bar chart (income/pending)
-  const stackedTooltipFormatter: TooltipProps<number, string>['formatter'] = useCallback((value, name) => {
-    const label =
-      name === 'income'
-        ? t('dash.ingresosMes')
-        : t('dash.rentasPendientes');
-    return [formatCurrency(value), label];
-  }, [formatCurrency, t]);
+  const stackedTooltipFormatter: TooltipProps<number, string>['formatter'] =
+  useCallback(
+    (value: number | undefined, name: string) => {
+      const label =
+        name === 'income'
+          ? t('dash.ingresosMes')
+          : t('dash.rentasPendientes');
+
+      return [`$${(value ?? 0).toLocaleString()}`, label];
+    },
+    [t]
+  );
 
   // Custom bar label renderer for "Active Tenants" bar chart
   const renderTenantBarLabel = useCallback((props: LabelProps) => {
