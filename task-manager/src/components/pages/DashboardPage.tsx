@@ -26,6 +26,16 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Month/Year filter
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return now.getMonth() + 1;
+  });
+  const [selectedYear, setSelectedYear] = useState(() => {
+    const now = new Date();
+    return now.getFullYear();
+  });
+
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -55,6 +65,47 @@ export function DashboardPage() {
     alert('Recordatorio enviado');
   };
 
+  // Generate month options
+  const getMonthOptions = () => {
+    const months = [
+      t('mes.enero'), t('mes.febrero'), t('mes.marzo'), t('mes.abril'),
+      t('mes.mayo'), t('mes.junio'), t('mes.julio'), t('mes.agosto'),
+      t('mes.septiembre'), t('mes.octubre'), t('mes.noviembre'), t('mes.diciembre')
+    ];
+    const options = [];
+    const currentYear = new Date().getFullYear();
+
+    for (let year = currentYear; year >= currentYear - 2; year--) {
+      for (let month = 12; month >= 1; month--) {
+        if (year === currentYear && month > new Date().getMonth() + 1) continue;
+        options.push({
+          value: `${month}-${year}`,
+          label: `${months[month - 1]} ${year}`,
+          month,
+          year,
+        });
+      }
+    }
+    return options;
+  };
+
+  // Handle month change
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const [month, year] = e.target.value.split('-').map(Number);
+    setSelectedMonth(month);
+    setSelectedYear(year);
+  };
+
+  // Filter rentasPendientes by selected month/year
+  const filteredRentasPendientes = rentasPendientes.filter((pago) => {
+    const fechaVencimiento = pago.fechaVencimiento ? new Date(pago.fechaVencimiento) : null;
+    if (!fechaVencimiento) return true;
+    return fechaVencimiento.getMonth() + 1 === selectedMonth && fechaVencimiento.getFullYear() === selectedYear;
+  });
+
+  // Calculate filtered stats
+  const filteredPendingAmount = filteredRentasPendientes.reduce((sum, p) => sum + (p.monto || 0), 0);
+
   if (loading) {
     return (
       <div className="dashboard-page">
@@ -80,6 +131,27 @@ export function DashboardPage() {
     <div className="dashboard-page">
       <div className="page-header">
         <h1 className="page-title">{t('dash.titulo')}</h1>
+        <select
+          className="filter-select"
+          value={`${selectedMonth}-${selectedYear}`}
+          onChange={handleMonthChange}
+          style={{
+            padding: '8px 16px',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            fontSize: '0.95rem',
+            color: '#1e293b',
+            background: 'white',
+            cursor: 'pointer',
+            minWidth: '160px',
+          }}
+        >
+          {getMonthOptions().map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Error Message */}
@@ -114,7 +186,7 @@ export function DashboardPage() {
         <div className="stat-card">
           <div className="stat-header">
             <span className="stat-label">{t('dash.ingresosMes')}</span>
-            <span className="stat-icon" style={{ color: '#10b981' }}>
+            <span className="stat-icon-badge stat-icon-green">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="12" y1="1" x2="12" y2="23" />
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -134,7 +206,7 @@ export function DashboardPage() {
         <div className="stat-card">
           <div className="stat-header">
             <span className="stat-label">{t('dash.rentasPendientes')}</span>
-            <span className="stat-icon pending">
+            <span className="stat-icon-badge stat-icon-orange">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12,6 12,12 16,14" />
@@ -142,19 +214,17 @@ export function DashboardPage() {
             </span>
           </div>
           <div className="stat-content">
-            <span className="stat-value">${stats.rentasPendientes.toLocaleString()}</span>
+            <span className="stat-value">${(filteredPendingAmount || stats.rentasPendientes).toLocaleString()}</span>
           </div>
         </div>
 
         <div className="stat-card">
           <div className="stat-header">
             <span className="stat-label">{t('dash.totalPropiedades')}</span>
-            <span className="stat-icon">
+            <span className="stat-icon-badge stat-icon-pink">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9,22 9,12 15,12 15,22" />
               </svg>
             </span>
           </div>
@@ -166,7 +236,7 @@ export function DashboardPage() {
         <div className="stat-card">
           <div className="stat-header">
             <span className="stat-label">{t('dash.inquilinosActivos')}</span>
-            <span className="stat-icon users">
+            <span className="stat-icon-badge stat-icon-blue">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
@@ -222,8 +292,8 @@ export function DashboardPage() {
                   labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
                 />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={60}>
-                  <Cell fill="#10b981" />
-                  <Cell fill="#ef4444" />
+                  <Cell fill="#3b82f6" />
+                  <Cell fill="#f59e0b" />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -258,7 +328,7 @@ export function DashboardPage() {
                   }
                   labelLine={true}
                 >
-                  <Cell fill="#2563eb" />
+                  <Cell fill="#3b82f6" />
                   <Cell fill="#f59e0b" />
                 </Pie>
                 <Tooltip
@@ -288,7 +358,7 @@ export function DashboardPage() {
         <h2 className="section-title">{t('dash.rentasPendientesTitle')}</h2>
 
         <div className="table-container">
-          {rentasPendientes.length === 0 ? (
+          {filteredRentasPendientes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" style={{ marginBottom: '0.75rem' }}>
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -307,7 +377,7 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {rentasPendientes.map((pago) => (
+                {filteredRentasPendientes.map((pago) => (
                   <tr key={pago.id}>
                     <td>
                       <div className="tenant-cell">
