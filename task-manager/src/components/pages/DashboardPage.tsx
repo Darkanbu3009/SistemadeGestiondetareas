@@ -7,8 +7,20 @@ import {
 } from '../../services/dashboardService';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList,
-  PieChart, Pie, Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  LabelList,
+  PieChart,
+  Pie,
+  Legend,
+  type LabelProps,
+  type TooltipProps,
 } from 'recharts';
 
 export function DashboardPage() {
@@ -46,6 +58,51 @@ export function DashboardPage() {
     return t(keys[m - 1]).substring(0, 3);
   }, [t]);
 
+  // ===============================
+  // FORMATTERS & RENDERERS (Type-safe for Recharts)
+  // ===============================
+
+  const formatCurrency = useCallback((value: number | undefined) => {
+    return `$${(value ?? 0).toLocaleString()}`;
+  }, []);
+
+  // Tooltip formatter for stacked bar chart (income/pending)
+  const stackedTooltipFormatter: TooltipProps<number, string>['formatter'] = useCallback((value, name) => {
+    const label =
+      name === 'income'
+        ? t('dash.ingresosMes')
+        : t('dash.rentasPendientes');
+    return [formatCurrency(value), label];
+  }, [formatCurrency, t]);
+
+  // Custom bar label renderer for "Active Tenants" bar chart
+  const renderTenantBarLabel = useCallback((props: LabelProps) => {
+    const { x, y, width, value, index } = props;
+
+    // Recharts may send x/y as string | number | undefined, so we guard
+    if (typeof x !== 'number' || typeof y !== 'number') return null;
+
+    const colors = ['#3b82f6', '#f59e0b'];
+
+    return (
+      <text
+        x={x + (typeof width === 'number' ? width / 2 : 0)}
+        y={y - 8}
+        textAnchor="middle"
+        fill={colors[index ?? 0] ?? '#3b82f6'}
+        fontWeight={700}
+        fontSize={14}
+      >
+        {value}
+      </text>
+    );
+  }, []);
+
+  // Pie label renderer (safe)
+  const renderPieLabel = useCallback(({ name, percent }: { name?: string; percent?: number }) => {
+    return `${name}: ${(((percent ?? 0) * 100)).toFixed(0)}%`;
+  }, []);
+
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -66,6 +123,7 @@ export function DashboardPage() {
         getPropiedadesDestacadas(),
         ...months.map(({ m, y }) => getDashboardStats(m, y).catch(() => ({ ingresosMes: 0, rentasPendientes: 0 }))),
       ]);
+
       setStats(statsData);
       setRentasPendientes(rentasData);
       setPropiedadesDestacadas(propiedadesData);
@@ -101,7 +159,7 @@ export function DashboardPage() {
       t('mes.mayo'), t('mes.junio'), t('mes.julio'), t('mes.agosto'),
       t('mes.septiembre'), t('mes.octubre'), t('mes.noviembre'), t('mes.diciembre')
     ];
-    const options = [];
+    const options: { value: string; label: string; month: number; year: number }[] = [];
     const currentYear = new Date().getFullYear();
 
     for (let year = currentYear; year >= currentYear - 2; year--) {
@@ -318,21 +376,7 @@ export function DashboardPage() {
                   <LabelList
                     dataKey="value"
                     position="top"
-                    content={({ x, y, width, value, index }: { x?: number; y?: number; width?: number; value?: number; index?: number }) => {
-                      const colors = ['#3b82f6', '#f59e0b'];
-                      return (
-                        <text
-                          x={(x ?? 0) + (width ?? 0) / 2}
-                          y={(y ?? 0) - 8}
-                          textAnchor="middle"
-                          fill={colors[index ?? 0]}
-                          fontWeight={700}
-                          fontSize={14}
-                        >
-                          {value}
-                        </text>
-                      );
-                    }}
+                    content={renderTenantBarLabel}
                   />
                 </Bar>
               </BarChart>
@@ -363,16 +407,14 @@ export function DashboardPage() {
                   outerRadius={100}
                   paddingAngle={4}
                   dataKey="value"
-                  label={({ name, percent }) =>
-                    `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`
-                  }
+                  label={renderPieLabel}
                   labelLine={true}
                 >
                   <Cell fill="#3b82f6" />
                   <Cell fill="#f59e0b" />
                 </Pie>
                 <Tooltip
-                  formatter={(value) => `$${Number(value).toLocaleString()}`}
+                  formatter={(value: number | undefined) => formatCurrency(value)}
                   contentStyle={{
                     backgroundColor: 'var(--bg-primary)',
                     border: '1px solid var(--border-color)',
@@ -413,13 +455,10 @@ export function DashboardPage() {
                 tick={{ fill: 'var(--text-secondary)', fontSize: 13 }}
                 axisLine={{ stroke: 'var(--border-color)' }}
                 tickLine={false}
-                tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
+                tickFormatter={(value: number | string) => `$${Number(value).toLocaleString()}`}
               />
               <Tooltip
-                formatter={(value: number, name: string) => [
-                  `$${Number(value).toLocaleString()}`,
-                  name === 'income' ? t('dash.ingresosMes') : t('dash.rentasPendientes'),
-                ]}
+                formatter={stackedTooltipFormatter}
                 contentStyle={{
                   backgroundColor: 'var(--bg-primary)',
                   border: '1px solid var(--border-color)',
