@@ -178,4 +178,12 @@ public class PagoService {
     public BigDecimal sumPendientes(User user, int month, int year) {
         return repository.sumPendientesByUserAndMonth(user, month, year);
     }
+
+    public Long countPropiedadesByMonth(User user, int month, int year) {
+        return repository.countDistinctPropiedadesByUserAndMonth(user, month, year);
+    }
+
+    public Long countInquilinosByMonth(User user, int month, int year) {
+        return repository.countDistinctInquilinosByUserAndMonth(user, month, year);
+    }
 }

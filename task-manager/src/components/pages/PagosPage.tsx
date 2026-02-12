@@ -110,35 +110,12 @@ export function PagosPage() {
     }
   }, []);
 
-  // Load stats
-  const loadStats = useCallback(async () => {
-    try {
-      const [ingresosData, morososCount] = await Promise.all([
-        pagosService.getIngresosMes(selectedMonth, selectedYear),
-        pagosService.getMorososCount(),
-      ]);
-
-      setStats({
-        ingresosMes: ingresosData.ingresosMes || 0,
-        rentasPendientes: ingresosData.rentasPendientes || 0,
-        morosos: morososCount || 0,
-      });
-    } catch (err) {
-      console.error('Error loading stats:', err);
-    }
-  }, [selectedMonth, selectedYear]);
-
   // Initial load
   useEffect(() => {
     loadAllPagos();
     loadInquilinos();
     loadPropiedades();
   }, [loadAllPagos, loadInquilinos, loadPropiedades]);
-
-  // Load stats when month changes
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
 
   // Filter pagos based on search, estado, and month/year
   useEffect(() => {
