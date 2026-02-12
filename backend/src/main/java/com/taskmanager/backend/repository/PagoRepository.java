@@ -48,13 +48,28 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     @Query("SELECT COALESCE(SUM(p.monto), 0) FROM Pago p WHERE p.user = :user AND p.estado IN ('pendiente', 'atrasado')")
     BigDecimal sumPendientesByUser(@Param("user") User user);
 
+    // Sum of pending payments filtered by month/year
+    @Query("SELECT COALESCE(SUM(p.monto), 0) FROM Pago p WHERE p.user = :user AND p.estado IN ('pendiente', 'atrasado') " +
+           "AND MONTH(p.fechaVencimiento) = :month AND YEAR(p.fechaVencimiento) = :year")
+    BigDecimal sumPendientesByUserAndMonth(@Param("user") User user, @Param("month") int month, @Param("year") int year);
+
     // Get overdue payments (morosos)
     @Query("SELECT p FROM Pago p WHERE p.user = :user AND p.estado = 'atrasado' ORDER BY p.fechaVencimiento ASC")
     List<Pago> findAtrasadosByUser(@Param("user") User user);
 
+    // Get overdue payments filtered by month/year
+    @Query("SELECT p FROM Pago p WHERE p.user = :user AND p.estado = 'atrasado' " +
+           "AND MONTH(p.fechaVencimiento) = :month AND YEAR(p.fechaVencimiento) = :year ORDER BY p.fechaVencimiento ASC")
+    List<Pago> findAtrasadosByUserAndMonth(@Param("user") User user, @Param("month") int month, @Param("year") int year);
+
     // Count distinct tenants with overdue payments
     @Query("SELECT COUNT(DISTINCT p.inquilino) FROM Pago p WHERE p.user = :user AND p.estado = 'atrasado'")
     Long countMorososByUser(@Param("user") User user);
+
+    // Count distinct tenants with overdue payments filtered by month/year
+    @Query("SELECT COUNT(DISTINCT p.inquilino) FROM Pago p WHERE p.user = :user AND p.estado = 'atrasado' " +
+           "AND MONTH(p.fechaVencimiento) = :month AND YEAR(p.fechaVencimiento) = :year")
+    Long countMorososByUserAndMonth(@Param("user") User user, @Param("month") int month, @Param("year") int year);
 
     // Get payments by date range
     @Query("SELECT p FROM Pago p WHERE p.user = :user AND p.fechaVencimiento BETWEEN :startDate AND :endDate")

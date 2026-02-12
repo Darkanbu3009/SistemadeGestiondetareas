@@ -48,15 +48,21 @@ public class DashboardController {
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<DashboardStatsResponse> getStats() {
+    public ResponseEntity<DashboardStatsResponse> getStats(
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year) {
         User user = getCurrentUser();
         LocalDate now = LocalDate.now();
 
-        // Get current month income
-        BigDecimal ingresosMes = pagoService.sumIngresosMes(user, now.getMonthValue(), now.getYear());
+        int targetMonth = month != null ? month : now.getMonthValue();
+        int targetYear = year != null ? year : now.getYear();
+
+        // Get selected month income
+        BigDecimal ingresosMes = pagoService.sumIngresosMes(user, targetMonth, targetYear);
 
         // Get previous month income for variation calculation
-        LocalDate previousMonth = now.minusMonths(1);
+        LocalDate targetDate = LocalDate.of(targetYear, targetMonth, 1);
+        LocalDate previousMonth = targetDate.minusMonths(1);
         BigDecimal ingresosMesAnterior = pagoService.sumIngresosMes(user,
                 previousMonth.getMonthValue(), previousMonth.getYear());
 
@@ -69,8 +75,8 @@ public class DashboardController {
                     .setScale(1, RoundingMode.HALF_UP);
         }
 
-        // Get pending rents
-        BigDecimal rentasPendientes = pagoService.sumPendientes(user);
+        // Get pending rents filtered by month/year
+        BigDecimal rentasPendientes = pagoService.sumPendientes(user, targetMonth, targetYear);
 
         // Get total properties
         Long totalPropiedades = propiedadService.countByUser(user);
@@ -78,8 +84,8 @@ public class DashboardController {
         // Get active tenants
         Long inquilinosActivos = inquilinoService.countActiveByUser(user);
 
-        // Get delinquent tenants count
-        Long morosos = pagoService.countMorosos(user);
+        // Get delinquent tenants count filtered by month/year
+        Long morosos = pagoService.countMorosos(user, targetMonth, targetYear);
 
         DashboardStatsResponse stats = new DashboardStatsResponse(
                 ingresosMes,
@@ -94,8 +100,13 @@ public class DashboardController {
     }
 
     @GetMapping("/rentas-pendientes")
-    public ResponseEntity<List<Pago>> getRentasPendientes() {
+    public ResponseEntity<List<Pago>> getRentasPendientes(
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year) {
         User user = getCurrentUser();
+        if (month != null && year != null) {
+            return ResponseEntity.ok(pagoService.getAtrasados(user, month, year));
+        }
         return ResponseEntity.ok(pagoService.getAtrasados(user));
     }
 

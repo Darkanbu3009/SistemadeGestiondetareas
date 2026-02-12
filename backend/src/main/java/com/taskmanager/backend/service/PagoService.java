@@ -131,6 +131,10 @@ public class PagoService {
         return repository.findAtrasadosByUser(user);
     }
 
+    public List<Pago> getAtrasados(User user, int month, int year) {
+        return repository.findAtrasadosByUserAndMonth(user, month, year);
+    }
+
     public List<Pago> getByInquilino(Inquilino inquilino, User user) {
         return repository.findByInquilinoAndUser(inquilino, user);
     }
@@ -159,11 +163,19 @@ public class PagoService {
         return repository.countMorososByUser(user);
     }
 
+    public Long countMorosos(User user, int month, int year) {
+        return repository.countMorososByUserAndMonth(user, month, year);
+    }
+
     public BigDecimal sumIngresosMes(User user, int month, int year) {
         return repository.sumPagadosByUserAndMonth(user, month, year);
     }
 
     public BigDecimal sumPendientes(User user) {
         return repository.sumPendientesByUser(user);
+    }
+
+    public BigDecimal sumPendientes(User user, int month, int year) {
+        return repository.sumPendientesByUserAndMonth(user, month, year);
     }
 }

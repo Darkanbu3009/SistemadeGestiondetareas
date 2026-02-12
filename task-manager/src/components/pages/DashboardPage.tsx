@@ -7,7 +7,7 @@ import {
 } from '../../services/dashboardService';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList,
   PieChart, Pie, Legend,
 } from 'recharts';
 
@@ -41,8 +41,8 @@ export function DashboardPage() {
     setError(null);
     try {
       const [statsData, rentasData, propiedadesData] = await Promise.all([
-        getDashboardStats(),
-        getRentasPendientes(),
+        getDashboardStats(selectedMonth, selectedYear),
+        getRentasPendientes(selectedMonth, selectedYear),
         getPropiedadesDestacadas(),
       ]);
       setStats(statsData);
@@ -54,7 +54,7 @@ export function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -96,15 +96,7 @@ export function DashboardPage() {
     setSelectedYear(year);
   };
 
-  // Filter rentasPendientes by selected month/year
-  const filteredRentasPendientes = rentasPendientes.filter((pago) => {
-    const fechaVencimiento = pago.fechaVencimiento ? new Date(pago.fechaVencimiento) : null;
-    if (!fechaVencimiento) return true;
-    return fechaVencimiento.getMonth() + 1 === selectedMonth && fechaVencimiento.getFullYear() === selectedYear;
-  });
-
-  // Calculate filtered stats
-  const filteredPendingAmount = filteredRentasPendientes.reduce((sum, p) => sum + (p.monto || 0), 0);
+  // rentasPendientes is already filtered by the backend based on selectedMonth/selectedYear
 
   if (loading) {
     return (
@@ -214,7 +206,7 @@ export function DashboardPage() {
             </span>
           </div>
           <div className="stat-content">
-            <span className="stat-value">${(filteredPendingAmount || stats.rentasPendientes).toLocaleString()}</span>
+            <span className="stat-value">${stats.rentasPendientes.toLocaleString()}</span>
           </div>
         </div>
 
@@ -294,6 +286,7 @@ export function DashboardPage() {
                 <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={60}>
                   <Cell fill="#3b82f6" />
                   <Cell fill="#f59e0b" />
+                  <LabelList dataKey="value" position="top" style={{ fill: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -358,7 +351,7 @@ export function DashboardPage() {
         <h2 className="section-title">{t('dash.rentasPendientesTitle')}</h2>
 
         <div className="table-container">
-          {filteredRentasPendientes.length === 0 ? (
+          {rentasPendientes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" style={{ marginBottom: '0.75rem' }}>
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -377,7 +370,7 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRentasPendientes.map((pago) => (
+                {rentasPendientes.map((pago) => (
                   <tr key={pago.id}>
                     <td>
                       <div className="tenant-cell">
