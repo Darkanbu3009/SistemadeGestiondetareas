@@ -655,7 +655,7 @@ export function InquilinosPage() {
               <div style={{ flex: '1 1 65%', minWidth: 0 }}>
                 {isMapLoaded ? (
                   <GoogleMap
-                    mapContainerStyle={{ width: '100%', height: '100%', borderRadius: '12px' }}
+                    mapContainerStyle={mapContainerStyle}
                     center={mapCenter}
                     zoom={mapZoom}
                     onLoad={onMapLoad}
