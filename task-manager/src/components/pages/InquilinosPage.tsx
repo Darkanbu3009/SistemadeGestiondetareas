@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Inquilino, InquilinoFormData, Propiedad, Pago } from '../../types';
+import type { Inquilino, InquilinoFormData, Propiedad } from '../../types';
 import {
   getInquilinos,
   createInquilino,
