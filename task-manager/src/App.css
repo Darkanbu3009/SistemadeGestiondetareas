@@ -572,35 +572,45 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-icon-badge:hover {
+  transform: scale(1.1);
 }
 
 .stat-icon-green {
-  background-color: #d1fae5;
-  color: #10b981;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
 }
 
 .stat-icon-orange {
-  background-color: #fef3c7;
-  color: #f59e0b;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #d97706;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
 }
 
 .stat-icon-pink {
-  background-color: #fce7f3;
-  color: #ec4899;
+  background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+  color: #db2777;
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.25);
 }
 
 .stat-icon-blue {
-  background-color: #dbeafe;
-  color: #3b82f6;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
 .stat-icon-red {
-  background-color: #fee2e2;
-  color: #ef4444;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  color: #dc2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
 }
 
 .morosos-badge {
