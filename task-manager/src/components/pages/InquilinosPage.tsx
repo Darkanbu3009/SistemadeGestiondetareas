@@ -643,189 +643,314 @@ export function InquilinosPage() {
         </div>
       ) : (
         <>
-          {/* Map View */}
+          {/* Map View - Split Layout */}
           {viewMode === 'map' && (
-            <div style={{ marginTop: '24px' }}>
-              {isMapLoaded ? (
-                <GoogleMap
-                  mapContainerStyle={mapContainerStyle}
-                  center={mapCenter}
-                  zoom={mapZoom}
-                  onLoad={onMapLoad}
-                  options={mapOptions}
-                >
-                  {geocodedInquilinos.map((geo) => {
-                    const isSelected = geo.inquilino.id === selectedInquilinoId;
-                    const color = getMarkerColor(geo.inquilino.contratoEstado);
+            <div style={{
+              display: 'flex',
+              gap: '16px',
+              marginTop: '24px',
+              height: '600px',
+            }}>
+              {/* Map Panel */}
+              <div style={{ flex: '1 1 65%', minWidth: 0 }}>
+                {isMapLoaded ? (
+                  <GoogleMap
+                    mapContainerStyle={{ width: '100%', height: '100%', borderRadius: '12px' }}
+                    center={mapCenter}
+                    zoom={mapZoom}
+                    onLoad={onMapLoad}
+                    options={mapOptions}
+                  >
+                    {geocodedInquilinos.map((geo) => {
+                      const isSelected = geo.inquilino.id === selectedInquilinoId;
+                      const color = getMarkerColor(geo.inquilino.contratoEstado);
 
-                    return (
-                      <OverlayViewF
-                        key={geo.inquilino.id}
-                        position={{ lat: geo.lat, lng: geo.lng }}
-                        mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-                      >
-                        <div
-                          onClick={() => setSelectedInquilinoId(isSelected ? null : geo.inquilino.id)}
-                          style={{
-                            transform: 'translate(-50%, -100%)',
-                            cursor: 'pointer',
-                            transition: 'transform 0.2s ease',
-                          }}
+                      return (
+                        <OverlayViewF
+                          key={geo.inquilino.id}
+                          position={{ lat: geo.lat, lng: geo.lng }}
+                          mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
                         >
                           <div
+                            onClick={() => setSelectedInquilinoId(isSelected ? null : geo.inquilino.id)}
                             style={{
-                              backgroundColor: isSelected ? '#1f2937' : color,
-                              color: 'white',
-                              padding: '6px 12px',
-                              borderRadius: '20px',
-                              fontSize: '13px',
-                              fontWeight: 700,
-                              whiteSpace: 'nowrap',
-                              boxShadow: isSelected
-                                ? '0 4px 12px rgba(0,0,0,0.4)'
-                                : '0 2px 8px rgba(0,0,0,0.2)',
-                              transform: isSelected ? 'scale(1.15)' : 'scale(1)',
-                              transition: 'all 0.2s ease',
-                              position: 'relative',
-                              zIndex: isSelected ? 10 : 1,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
+                              transform: 'translate(-50%, -100%)',
+                              cursor: 'pointer',
+                              transition: 'transform 0.2s ease',
                             }}
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                              <circle cx="12" cy="7" r="4" />
-                            </svg>
-                            {geo.inquilino.nombre} {geo.inquilino.apellido}
-                          </div>
-                          <div
-                            style={{
-                              width: 0,
-                              height: 0,
-                              borderLeft: '6px solid transparent',
-                              borderRight: '6px solid transparent',
-                              borderTop: `6px solid ${isSelected ? '#1f2937' : color}`,
-                              margin: '0 auto',
-                            }}
-                          />
-                          {isSelected && (
-                            <div style={{
-                              position: 'absolute',
-                              top: '100%',
-                              left: '50%',
-                              transform: 'translateX(-50%)',
-                              marginTop: '8px',
-                              backgroundColor: 'white',
-                              borderRadius: '8px',
-                              padding: '12px',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                              minWidth: '200px',
-                              zIndex: 20,
-                            }}>
-                              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
-                                {geo.inquilino.nombre} {geo.inquilino.apellido}
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>
-                                {geo.inquilino.email}
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                                {geo.inquilino.telefono}
-                              </div>
-                              {geo.inquilino.direccionContacto && (
-                                <div style={{ fontSize: '12px', color: '#374151', marginBottom: '4px' }}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
-                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                    <circle cx="12" cy="10" r="3" />
-                                  </svg>
-                                  {geo.inquilino.direccionContacto}
-                                </div>
-                              )}
-                              <span className={`badge ${getContratoEstadoClass(geo.inquilino.contratoEstado)}`} style={{ fontSize: '11px' }}>
-                                {getContratoEstadoLabel(geo.inquilino.contratoEstado)}
-                              </span>
-                              <div style={{ marginTop: '8px', display: 'flex', gap: '4px' }}>
-                                <button
-                                  className="btn btn-outline btn-sm"
-                                  onClick={(e) => { e.stopPropagation(); handleOpenModal(geo.inquilino); }}
-                                  style={{ fontSize: '11px', padding: '2px 8px' }}
-                                >
-                                  {t('inq.editarBtn')}
-                                </button>
-                                <button
-                                  className="btn btn-outline btn-sm"
-                                  onClick={(e) => { e.stopPropagation(); handleContactar(geo.inquilino); }}
-                                  style={{ fontSize: '11px', padding: '2px 8px' }}
-                                >
-                                  {t('inq.contactar')}
-                                </button>
-                              </div>
+                            <div
+                              style={{
+                                backgroundColor: isSelected ? '#1f2937' : color,
+                                color: 'white',
+                                padding: '6px 12px',
+                                borderRadius: '20px',
+                                fontSize: '13px',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                                boxShadow: isSelected
+                                  ? '0 4px 12px rgba(0,0,0,0.4)'
+                                  : '0 2px 8px rgba(0,0,0,0.2)',
+                                transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                                transition: 'all 0.2s ease',
+                                position: 'relative',
+                                zIndex: isSelected ? 10 : 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                              </svg>
+                              {geo.inquilino.nombre} {geo.inquilino.apellido}
                             </div>
-                          )}
-                        </div>
-                      </OverlayViewF>
-                    );
-                  })}
-                </GoogleMap>
-              ) : (
+                            <div
+                              style={{
+                                width: 0,
+                                height: 0,
+                                borderLeft: '6px solid transparent',
+                                borderRight: '6px solid transparent',
+                                borderTop: `6px solid ${isSelected ? '#1f2937' : color}`,
+                                margin: '0 auto',
+                              }}
+                            />
+                            {isSelected && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                marginTop: '8px',
+                                backgroundColor: 'white',
+                                borderRadius: '8px',
+                                padding: '12px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                minWidth: '200px',
+                                zIndex: 20,
+                              }}>
+                                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                                  {geo.inquilino.nombre} {geo.inquilino.apellido}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>
+                                  {geo.inquilino.email}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                                  {geo.inquilino.telefono}
+                                </div>
+                                {geo.inquilino.direccionContacto && (
+                                  <div style={{ fontSize: '12px', color: '#374151', marginBottom: '4px' }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
+                                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                      <circle cx="12" cy="10" r="3" />
+                                    </svg>
+                                    {geo.inquilino.direccionContacto}
+                                  </div>
+                                )}
+                                <span className={`badge ${getContratoEstadoClass(geo.inquilino.contratoEstado)}`} style={{ fontSize: '11px' }}>
+                                  {getContratoEstadoLabel(geo.inquilino.contratoEstado)}
+                                </span>
+                                <div style={{ marginTop: '8px', display: 'flex', gap: '4px' }}>
+                                  <button
+                                    className="btn btn-outline btn-sm"
+                                    onClick={(e) => { e.stopPropagation(); handleOpenModal(geo.inquilino); }}
+                                    style={{ fontSize: '11px', padding: '2px 8px' }}
+                                  >
+                                    {t('inq.editarBtn')}
+                                  </button>
+                                  <button
+                                    className="btn btn-outline btn-sm"
+                                    onClick={(e) => { e.stopPropagation(); handleContactar(geo.inquilino); }}
+                                    style={{ fontSize: '11px', padding: '2px 8px' }}
+                                  >
+                                    {t('inq.contactar')}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </OverlayViewF>
+                      );
+                    })}
+                  </GoogleMap>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '12px',
+                  }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        border: '3px solid #e5e7eb',
+                        borderTop: '3px solid #3b82f6',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        margin: '0 auto',
+                      }} />
+                      <p style={{ marginTop: '12px', color: '#6b7280', fontSize: '14px' }}>
+                        Cargando mapa...
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tenant List Panel */}
+              <div style={{
+                flex: '0 0 35%',
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}>
                 <div style={{
+                  padding: '16px 20px',
+                  borderBottom: '1px solid #e5e7eb',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '500px',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '12px',
+                  justifyContent: 'space-between',
                 }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      border: '3px solid #e5e7eb',
-                      borderTop: '3px solid #3b82f6',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite',
-                      margin: '0 auto',
-                    }} />
-                    <p style={{ marginTop: '12px', color: '#6b7280', fontSize: '14px' }}>
-                      Cargando mapa...
-                    </p>
-                  </div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>
+                    {t('inq.titulo')}
+                  </h3>
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#6b7280',
+                    backgroundColor: '#f1f5f9',
+                    padding: '2px 10px',
+                    borderRadius: '12px',
+                    fontWeight: 500,
+                  }}>
+                    {inquilinos.length}
+                  </span>
                 </div>
-              )}
-
-              {/* Cards below map for inquilinos without address */}
-              {inquilinos.filter(i => !i.direccionContacto || i.direccionContacto.trim() === '').length > 0 && (
-                <div style={{ marginTop: '16px' }}>
-                  <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px' }}>
-                    {t('inq.sinDireccion')}:
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {inquilinos.filter(i => !i.direccionContacto || i.direccionContacto.trim() === '').map(inquilino => (
+                <div style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  padding: '8px',
+                }}>
+                  {inquilinos.map((inquilino) => {
+                    const isSelected = inquilino.id === selectedInquilinoId;
+                    const hasGeocode = geocodedInquilinos.some(g => g.inquilino.id === inquilino.id);
+                    return (
                       <div
                         key={inquilino.id}
-                        onClick={() => handleOpenModal(inquilino)}
+                        onClick={() => {
+                          setSelectedInquilinoId(isSelected ? null : inquilino.id);
+                          if (!isSelected && hasGeocode) {
+                            const geo = geocodedInquilinos.find(g => g.inquilino.id === inquilino.id);
+                            if (geo && mapRef.current) {
+                              mapRef.current.panTo({ lat: geo.lat, lng: geo.lng });
+                              mapRef.current.setZoom(15);
+                            }
+                          }
+                        }}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px 12px',
-                          backgroundColor: 'white',
-                          borderRadius: '8px',
-                          border: '1px solid #e5e7eb',
+                          gap: '12px',
+                          padding: '12px',
+                          borderRadius: '10px',
                           cursor: 'pointer',
-                          fontSize: '13px',
+                          backgroundColor: isSelected ? '#eff6ff' : 'transparent',
+                          border: isSelected ? '1px solid #bfdbfe' : '1px solid transparent',
+                          marginBottom: '4px',
+                          transition: 'all 0.15s ease',
                         }}
                       >
-                        <TenantAvatar src={inquilino.avatar} alt={`${inquilino.nombre} ${inquilino.apellido}`} size={28} />
-                        <span style={{ fontWeight: 500 }}>{inquilino.nombre} {inquilino.apellido}</span>
-                        <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`} style={{ fontSize: '10px' }}>
-                          {getContratoEstadoLabel(inquilino.contratoEstado)}
-                        </span>
+                        <TenantAvatar
+                          src={inquilino.avatar}
+                          alt={`${inquilino.nombre} ${inquilino.apellido}`}
+                          size={42}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                          }}>
+                            <span style={{
+                              fontWeight: 600,
+                              fontSize: '14px',
+                              color: '#1e293b',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {inquilino.nombre} {inquilino.apellido}
+                            </span>
+                            <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`} style={{ fontSize: '10px', flexShrink: 0 }}>
+                              {getContratoEstadoLabel(inquilino.contratoEstado)}
+                            </span>
+                          </div>
+                          {inquilino.propiedad ? (
+                            <span style={{
+                              fontSize: '12px',
+                              color: '#6b7280',
+                              display: 'block',
+                              marginTop: '2px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {inquilino.propiedad.nombre}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '12px', color: '#9ca3af', display: 'block', marginTop: '2px' }}>
+                              {t('inq.sinPropiedad')}
+                            </span>
+                          )}
+                          {inquilino.direccionContacto && (
+                            <span style={{
+                              fontSize: '11px',
+                              color: '#94a3b8',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              marginTop: '2px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                              </svg>
+                              {inquilino.direccionContacto}
+                            </span>
+                          )}
+                          {!inquilino.direccionContacto && (
+                            <span style={{
+                              fontSize: '11px',
+                              color: '#d1d5db',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              marginTop: '2px',
+                              fontStyle: 'italic',
+                            }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                              </svg>
+                              {t('inq.sinDireccion')}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
             </div>
           )}
 
