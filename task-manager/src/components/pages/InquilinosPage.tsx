@@ -111,6 +111,9 @@ export function InquilinosPage() {
   const mapRef = useRef<google.maps.Map | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ id: number; x: number; y: number } | null>(null);
+
   const { isLoaded: isMapLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
   });
@@ -180,7 +183,7 @@ export function InquilinosPage() {
       const results: GeocodedInquilino[] = [];
 
       for (const inquilino of inquilinos) {
-        const address = inquilino.propiedad?.direccion || inquilino.direccionContacto;
+        const address = inquilino.direccionContacto || inquilino.propiedad?.direccion;
         if (!address || address.trim() === '') continue;
 
         const cacheKey = address.toLowerCase().trim();
@@ -416,7 +419,7 @@ export function InquilinosPage() {
 
   const formatCurrency = (amount?: number | null) => {
     if (amount == null) return '—';
-    return `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const getPageNumbers = () => {
@@ -443,10 +446,11 @@ export function InquilinosPage() {
       case 'pagado':
         return t('inq.alCorriente');
       case 'pendiente':
-      case 'atrasado':
         return t('inq.pendientePago');
+      case 'atrasado':
+        return t('inq.mora');
       default:
-        return t('inq.sinPagos');
+        return t('inq.nuevo');
     }
   };
 
@@ -459,7 +463,20 @@ export function InquilinosPage() {
       case 'atrasado':
         return 'inq-status-overdue';
       default:
-        return 'inq-status-none';
+        return 'inq-status-new';
+    }
+  };
+
+  const getStatusDotColor = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
+    switch (estado) {
+      case 'pagado':
+        return '#10b981';
+      case 'pendiente':
+        return '#f59e0b';
+      case 'atrasado':
+        return '#ef4444';
+      default:
+        return '#8b5cf6';
     }
   };
 
@@ -473,8 +490,37 @@ export function InquilinosPage() {
       case 'atrasado':
         return '#ef4444';
       default:
-        return '#6b7280';
+        return '#8b5cf6';
     }
+  };
+
+  // Close context menu on outside click
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
+
+  const handleCardClick = (inquilino: Inquilino) => {
+    const isSelected = inquilino.id === selectedInquilinoId;
+    setSelectedInquilinoId(isSelected ? null : inquilino.id);
+    setContextMenu(null);
+
+    if (!isSelected) {
+      const geo = geocodedInquilinos.find(g => g.inquilino.id === inquilino.id);
+      if (geo && mapRef.current) {
+        mapRef.current.panTo({ lat: geo.lat, lng: geo.lng });
+        mapRef.current.setZoom(15);
+      }
+    }
+  };
+
+  const handleCardContextMenu = (e: React.MouseEvent, inquilinoId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ id: inquilinoId, x: e.clientX, y: e.clientY });
   };
 
   const TenantAvatar = ({ src, alt, size = 40 }: { src?: string; alt: string; size?: number }) => {
@@ -583,7 +629,10 @@ export function InquilinosPage() {
     <div className="inquilinos-page">
       {/* Page Header */}
       <div className="page-header">
-        <h1 className="page-title">{t('inq.titulo')}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 className="page-title">{t('inq.titulo')}</h1>
+          <span className="inq-header-count">{totalElements}</span>
+        </div>
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
           <span>+</span> {t('inq.agregar').replace('+ ', '')}
         </button>
@@ -612,7 +661,7 @@ export function InquilinosPage() {
               padding: '0 8px'
             }}
           >
-            ×
+            x
           </button>
         </div>
       )}
@@ -662,120 +711,79 @@ export function InquilinosPage() {
           <div className="inq-main-layout">
             {/* Tenant List Panel */}
             <div className="inq-list-panel">
-              <div className="inq-list-header">
-                <h3>{t('inq.titulo')}</h3>
-                <span className="inq-list-count">{totalElements}</span>
-              </div>
               <div className="inq-list-scroll">
                 {inquilinos.map((inquilino) => {
                   const pagoInfo = pagosPorInquilino.get(inquilino.id);
                   const isSelected = inquilino.id === selectedInquilinoId;
-                  const hasGeocode = geocodedInquilinos.some(g => g.inquilino.id === inquilino.id);
 
                   return (
                     <div
                       key={inquilino.id}
                       className={`inq-card ${isSelected ? 'inq-card-selected' : ''}`}
-                      onClick={() => {
-                        setSelectedInquilinoId(isSelected ? null : inquilino.id);
-                        if (!isSelected && hasGeocode) {
-                          const geo = geocodedInquilinos.find(g => g.inquilino.id === inquilino.id);
-                          if (geo && mapRef.current) {
-                            mapRef.current.panTo({ lat: geo.lat, lng: geo.lng });
-                            mapRef.current.setZoom(15);
-                          }
-                        }
-                      }}
+                      onClick={() => handleCardClick(inquilino)}
+                      onContextMenu={(e) => handleCardContextMenu(e, inquilino.id)}
                     >
-                      {/* Card Top: Avatar + Name + Status */}
-                      <div className="inq-card-top">
-                        <div className="inq-card-identity">
+                      {/* Card content: horizontal layout */}
+                      <div className="inq-card-body">
+                        {/* Left side: Avatar + Info */}
+                        <div className="inq-card-left">
                           <TenantAvatar
                             src={inquilino.avatar}
                             alt={`${inquilino.nombre} ${inquilino.apellido}`}
-                            size={44}
+                            size={48}
                           />
-                          <div className="inq-card-name-block">
+                          <div className="inq-card-info">
                             <span className="inq-card-name">
                               {inquilino.nombre} {inquilino.apellido}
                             </span>
                             <span className="inq-card-property">
                               {inquilino.propiedad ? inquilino.propiedad.nombre : t('inq.sinPropiedadCorta')}
                             </span>
+                            <div className="inq-card-details">
+                              <div className="inq-card-detail">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                  <circle cx="12" cy="10" r="3" />
+                                </svg>
+                                <span>
+                                  {inquilino.propiedad
+                                    ? `${inquilino.propiedad.direccion}, ${inquilino.propiedad.ciudad}`
+                                    : inquilino.direccionContacto || t('inq.sinDireccion')}
+                                </span>
+                              </div>
+                              <div className="inq-card-detail">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                  <polyline points="22,6 12,13 2,6" />
+                                </svg>
+                                <span>{inquilino.email}</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <span className={`inq-status-badge ${getPaymentStatusClass(pagoInfo?.estado)}`}>
-                          {getPaymentStatusLabel(pagoInfo?.estado)}
-                        </span>
-                      </div>
 
-                      {/* Card Info Row: Address + Email */}
-                      <div className="inq-card-info-row">
-                        <div className="inq-card-info-item">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                            <circle cx="12" cy="10" r="3" />
-                          </svg>
-                          <span>
-                            {inquilino.propiedad
-                              ? `${inquilino.propiedad.direccion}, ${inquilino.propiedad.ciudad}`
-                              : inquilino.direccionContacto || t('inq.sinDireccion')}
+                        {/* Right side: Status + Payment */}
+                        <div className="inq-card-right">
+                          <span className={`inq-status-badge ${getPaymentStatusClass(pagoInfo?.estado)}`}>
+                            {getPaymentStatusLabel(pagoInfo?.estado)}
                           </span>
+                          <div className="inq-card-payment">
+                            <span className="inq-card-amount">
+                              {pagoInfo?.monto != null
+                                ? `${formatCurrency(pagoInfo.monto)}${t('inq.porMes')}`
+                                : '—'}
+                            </span>
+                            <div className="inq-card-due">
+                              <span
+                                className="inq-card-due-dot"
+                                style={{ backgroundColor: getStatusDotColor(pagoInfo?.estado) }}
+                              />
+                              <span className="inq-card-due-date">
+                                {formatDate(pagoInfo?.fechaVencimiento)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="inq-card-info-item">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                          </svg>
-                          <span>{inquilino.email}</span>
-                        </div>
-                      </div>
-
-                      {/* Card Payment Row: Monto + Vencimiento */}
-                      <div className="inq-card-payment-row">
-                        <div className="inq-card-payment-item">
-                          <span className="inq-card-payment-label">{t('inq.montoMes')}</span>
-                          <span className="inq-card-payment-value">{formatCurrency(pagoInfo?.monto)}</span>
-                        </div>
-                        <div className="inq-card-payment-item">
-                          <span className="inq-card-payment-label">{t('inq.fechaVencimiento')}</span>
-                          <span className="inq-card-payment-value">{formatDate(pagoInfo?.fechaVencimiento)}</span>
-                        </div>
-                      </div>
-
-                      {/* Card Actions */}
-                      <div className="inq-card-actions">
-                        <button
-                          className="btn btn-outline btn-sm"
-                          onClick={(e) => { e.stopPropagation(); handleOpenModal(inquilino); }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                          {t('inq.editarBtn')}
-                        </button>
-                        <button
-                          className="btn btn-outline btn-sm"
-                          onClick={(e) => { e.stopPropagation(); handleContactar(inquilino); }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                          </svg>
-                          {t('inq.contactar')}
-                        </button>
-                        <button
-                          className="btn btn-outline btn-sm"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(inquilino.id); }}
-                          style={{ color: '#dc2626', borderColor: '#fecaca' }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3,6 5,6 21,6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                          {t('inq.eliminar')}
-                        </button>
                       </div>
                     </div>
                   );
@@ -954,7 +962,57 @@ export function InquilinosPage() {
         </>
       )}
 
-      {/* Modal - Keep existing CRUD modal */}
+      {/* Context Menu */}
+      {contextMenu && (() => {
+        const inquilino = inquilinos.find(i => i.id === contextMenu.id);
+        if (!inquilino) return null;
+        return (
+          <div
+            className="inq-context-menu"
+            style={{
+              position: 'fixed',
+              top: contextMenu.y,
+              left: contextMenu.x,
+              zIndex: 1000,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="inq-context-item"
+              onClick={() => { handleOpenModal(inquilino); setContextMenu(null); }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              {t('inq.editarBtn')}
+            </button>
+            <button
+              className="inq-context-item"
+              onClick={() => { handleContactar(inquilino); setContextMenu(null); }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+              {t('inq.contactar')}
+            </button>
+            <div className="inq-context-divider" />
+            <button
+              className="inq-context-item inq-context-danger"
+              onClick={() => { handleDelete(inquilino.id); setContextMenu(null); }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3,6 5,6 21,6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              {t('inq.eliminar')}
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Modal - CRUD modal */}
       {showModal && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
