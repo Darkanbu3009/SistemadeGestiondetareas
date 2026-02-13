@@ -139,3 +139,37 @@ export const getInquilinosActivosCount = async (): Promise<number> => {
 
   return handleResponse(response);
 };
+
+// Upload avatar for inquilino
+export const uploadInquilinoAvatar = async (id: number, file: File): Promise<Inquilino> => {
+  const token = localStorage.getItem('token');
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_URL}/inquilinos/${id}/upload-avatar`, {
+    method: 'POST',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: formData,
+  });
+
+  return handleResponse(response);
+};
+
+// Upload identity document for inquilino
+export const uploadInquilinoDocumento = async (id: number, file: File): Promise<Inquilino> => {
+  const token = localStorage.getItem('token');
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_URL}/inquilinos/${id}/upload-documento-identidad`, {
+    method: 'POST',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: formData,
+  });
+
+  return handleResponse(response);
+};

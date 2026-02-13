@@ -100,7 +100,9 @@ public class InquilinoService {
         }
         // Always update avatar (even if null or empty to allow clearing it)
         inquilino.setAvatar(inquilinoDetails.getAvatar());
-        
+        // Update contact address
+        inquilino.setDireccionContacto(inquilinoDetails.getDireccionContacto());
+
         if (inquilinoDetails.getContratoEstado() != null) {
             inquilino.setContratoEstado(inquilinoDetails.getContratoEstado());
         }
@@ -173,5 +175,9 @@ public class InquilinoService {
 
     public Long countActiveByUser(User user) {
         return repository.countActiveByUser(user);
+    }
+
+    public Inquilino save(Inquilino inquilino) {
+        return repository.save(inquilino);
     }
 }
