@@ -19,8 +19,6 @@ interface ContratoStats {
   sinFirmar: number;
 }
 
-type ViewMode = 'grid' | 'list';
-
 const emptyFormData: ContratoFormData = {
   inquilinoId: 0,
   propiedadId: 0,
@@ -57,7 +55,6 @@ export function ContratosPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [stats, setStats] = useState<ContratoStats>({
     activos: 0,
     porVencer: 0,
@@ -494,140 +491,6 @@ export function ContratosPage() {
     );
   };
 
-  // ========== GRID CARD COMPONENT (NUEVO) ==========
-  const ContratoCard = ({ contrato }: { contrato: Contrato }) => (
-    <div
-      className="contrato-card"
-      style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: '12px',
-        padding: '1.25rem',
-        backgroundColor: '#fff',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-        transition: 'box-shadow 0.2s ease',
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)')}
-      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
-    >
-      {/* Header: tenant + estado */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <TenantAvatar
-            src={contrato.inquilino?.avatar}
-            alt={`${contrato.inquilino?.nombre} ${contrato.inquilino?.apellido}`}
-            size={44}
-          />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#111827' }}>
-              {contrato.inquilino?.nombre} {contrato.inquilino?.apellido}
-            </div>
-            <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-              {contrato.inquilino?.email}
-            </div>
-          </div>
-        </div>
-        <span className={`badge ${getEstadoClass(contrato.estado)}`}>
-          {getEstadoLabel(contrato.estado)}
-        </span>
-      </div>
-
-      {/* Property info */}
-      <div style={{ padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-        <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#374151' }}>
-          {contrato.propiedad?.nombre}
-        </div>
-        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '2px' }}>
-          {contrato.propiedad?.direccion}, {contrato.propiedad?.ciudad}
-        </div>
-      </div>
-
-      {/* Dates & Rent */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-        <div>
-          <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
-            {t('cont.inicio')}
-          </div>
-          <div style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 500 }}>
-            {formatDate(contrato.fechaInicio)}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
-            {t('cont.fin')}
-          </div>
-          <div style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 500 }}>
-            {formatDate(contrato.fechaFin)}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
-            {t('cont.renta')}
-          </div>
-          <div style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 600 }}>
-            ${contrato.rentaMensual.toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: '8px', paddingTop: '0.5rem', borderTop: '1px solid #f3f4f6', flexWrap: 'wrap' }}>
-        {contrato.pdfUrl ? (
-          <a
-            href={contrato.pdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-outline btn-sm"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flex: 1, justifyContent: 'center' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14,2 14,8 20,8" />
-            </svg>
-            {t('cont.verPdf')}
-          </a>
-        ) : (
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={() => handleUploadPdfForExisting(contrato.id)}
-            disabled={uploadingPdf}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flex: 1, justifyContent: 'center' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            {uploadingPdf ? t('cont.subiendo') : t('cont.subirPdf')}
-          </button>
-        )}
-        <button
-          className="btn btn-outline btn-sm"
-          onClick={() => handleOpenModal(contrato)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-          {t('cont.editarBtn')}
-        </button>
-        <button
-          className="btn btn-outline btn-sm btn-danger-text"
-          onClick={() => handleDelete(contrato.id)}
-          style={{ color: '#dc2626', borderColor: '#dc2626', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="3,6 5,6 21,6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
-          {t('cont.eliminar')}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="contratos-page">
       <div className="page-header">
@@ -667,8 +530,8 @@ export function ContratosPage() {
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
             <span className="stat-label">{t('cont.activos')}</span>
-            <span className="stat-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <span className="stat-icon-badge stat-icon-green">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
@@ -682,8 +545,8 @@ export function ContratosPage() {
         <div className="stat-card stat-card-bordered stat-card-warning">
           <div className="stat-header">
             <span className="stat-label">{t('cont.porVencer')}</span>
-            <span className="stat-icon warning">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <span className="stat-icon-badge stat-icon-orange">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -698,10 +561,11 @@ export function ContratosPage() {
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
             <span className="stat-label">{t('cont.finalizados')}</span>
-            <span className="stat-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            <span className="stat-icon-badge stat-icon-red">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+                <line x1="15" y1="9" x2="9" y2="15" />
               </svg>
             </span>
           </div>
@@ -713,8 +577,8 @@ export function ContratosPage() {
         <div className="stat-card stat-card-bordered">
           <div className="stat-header">
             <span className="stat-label">{t('cont.sinFirmar')}</span>
-            <span className="stat-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <span className="stat-icon-badge stat-icon-blue">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14,2 14,8 20,8" />
                 <line x1="16" y1="13" x2="8" y2="13" />
@@ -760,37 +624,9 @@ export function ContratosPage() {
             />
           </div>
         </div>
-        <div className="view-toggle">
-          <button
-            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-            onClick={() => setViewMode('grid')}
-            title={t('cont.vistaGrid')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-            </svg>
-          </button>
-          <button
-            className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-            onClick={() => setViewMode('list')}
-            title={t('cont.vistaLista')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6" />
-              <line x1="8" y1="12" x2="21" y2="12" />
-              <line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" />
-              <line x1="3" y1="12" x2="3.01" y2="12" />
-              <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-          </button>
-        </div>
       </div>
 
-      {/* Content: Grid or List */}
+      {/* Content: List View */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>{t('cont.cargando')}</div>
       ) : contratos.length === 0 ? (
@@ -800,22 +636,7 @@ export function ContratosPage() {
             {t('cont.crearPrimero')}
           </button>
         </div>
-      ) : viewMode === 'grid' ? (
-        /* ========== GRID VIEW (NUEVO) ========== */
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-            gap: '1.25rem',
-            marginTop: '0.5rem',
-          }}
-        >
-          {contratos.map((contrato) => (
-            <ContratoCard key={contrato.id} contrato={contrato} />
-          ))}
-        </div>
       ) : (
-        /* ========== LIST/TABLE VIEW (ORIGINAL) ========== */
         <div className="table-container">
           <table className="data-table">
             <thead>
