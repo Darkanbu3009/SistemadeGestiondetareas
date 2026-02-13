@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Inquilino, InquilinoFormData, Propiedad } from '../../types';
+import type { Inquilino, InquilinoFormData, Propiedad, Pago } from '../../types';
 import {
   getInquilinos,
   createInquilino,
@@ -8,6 +8,7 @@ import {
   uploadInquilinoAvatar,
   uploadInquilinoDocumento,
 } from '../../services/inquilinosService';
+import { getAllPagos } from '../../services/pagosService';
 import { getPropiedadesDisponibles, getAllPropiedades } from '../../services/propiedadService';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
@@ -28,12 +29,10 @@ const emptyFormData: InquilinoFormData = {
   propiedadId: undefined,
 };
 
-type ViewMode = 'map' | 'grid';
-
 // Map configuration
 const mapContainerStyle: React.CSSProperties = {
   width: '100%',
-  height: '500px',
+  height: '100%',
   borderRadius: '12px',
 };
 
@@ -67,6 +66,12 @@ interface GeocodedInquilino {
   lng: number;
 }
 
+interface InquilinoPagoInfo {
+  estado: 'pagado' | 'pendiente' | 'atrasado' | null;
+  monto: number | null;
+  fechaVencimiento: string | null;
+}
+
 export function InquilinosPage() {
   const { t } = useLanguage();
   const [inquilinos, setInquilinos] = useState<Inquilino[]>([]);
@@ -78,7 +83,6 @@ export function InquilinosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('map');
 
   // File upload states
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -95,6 +99,9 @@ export function InquilinosPage() {
   const pageSize = 10;
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Payment data for each tenant
+  const [pagosPorInquilino, setPagosPorInquilino] = useState<Map<number, InquilinoPagoInfo>>(new Map());
 
   // Map states
   const [geocodedInquilinos, setGeocodedInquilinos] = useState<GeocodedInquilino[]>([]);
@@ -136,6 +143,34 @@ export function InquilinosPage() {
     fetchInquilinos();
   }, [fetchInquilinos]);
 
+  // Fetch payment data for tenants
+  useEffect(() => {
+    const fetchPagos = async () => {
+      try {
+        const allPagos = await getAllPagos();
+        const pagoMap = new Map<number, InquilinoPagoInfo>();
+
+        // Group pagos by inquilinoId, keep the most recent one
+        for (const pago of allPagos) {
+          const existing = pagoMap.get(pago.inquilinoId);
+          if (!existing || new Date(pago.fechaVencimiento) > new Date(existing.fechaVencimiento || '')) {
+            pagoMap.set(pago.inquilinoId, {
+              estado: pago.estado,
+              monto: pago.monto,
+              fechaVencimiento: pago.fechaVencimiento,
+            });
+          }
+        }
+
+        setPagosPorInquilino(pagoMap);
+      } catch (err) {
+        console.error('Error fetching pagos:', err);
+      }
+    };
+
+    fetchPagos();
+  }, [inquilinos]);
+
   // Geocode inquilinos for map view
   useEffect(() => {
     if (!isMapLoaded || !geocoderRef.current || inquilinos.length === 0) return;
@@ -145,7 +180,7 @@ export function InquilinosPage() {
       const results: GeocodedInquilino[] = [];
 
       for (const inquilino of inquilinos) {
-        const address = inquilino.direccionContacto;
+        const address = inquilino.propiedad?.direccion || inquilino.direccionContacto;
         if (!address || address.trim() === '') continue;
 
         const cacheKey = address.toLowerCase().trim();
@@ -373,39 +408,15 @@ export function InquilinosPage() {
     }
   };
 
-  const getContratoEstadoClass = (estado?: string) => {
-    switch (estado) {
-      case 'activo':
-        return 'badge-success';
-      case 'en_proceso':
-        return 'badge-warning';
-      case 'finalizado':
-        return 'badge-danger';
-      case 'sin_contrato':
-      default:
-        return 'badge-secondary';
-    }
-  };
-
-  const getContratoEstadoLabel = (estado?: string) => {
-    switch (estado) {
-      case 'activo':
-        return t('inq.activo');
-      case 'en_proceso':
-        return t('inq.enProceso');
-      case 'finalizado':
-        return t('inq.finalizado');
-      case 'sin_contrato':
-        return t('inq.sinContrato');
-      default:
-        return t('inq.sinContrato');
-    }
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const formatCurrency = (amount?: number | null) => {
+    if (amount == null) return '—';
+    return `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const getPageNumbers = () => {
@@ -427,13 +438,39 @@ export function InquilinosPage() {
   const startItem = currentPage * pageSize + 1;
   const endItem = Math.min((currentPage + 1) * pageSize, totalElements);
 
-  const getMarkerColor = (estado?: string) => {
+  const getPaymentStatusLabel = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
     switch (estado) {
-      case 'activo':
+      case 'pagado':
+        return t('inq.alCorriente');
+      case 'pendiente':
+      case 'atrasado':
+        return t('inq.pendientePago');
+      default:
+        return t('inq.sinPagos');
+    }
+  };
+
+  const getPaymentStatusClass = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
+    switch (estado) {
+      case 'pagado':
+        return 'inq-status-paid';
+      case 'pendiente':
+        return 'inq-status-pending';
+      case 'atrasado':
+        return 'inq-status-overdue';
+      default:
+        return 'inq-status-none';
+    }
+  };
+
+  const getMarkerColor = (inquilinoId: number) => {
+    const pagoInfo = pagosPorInquilino.get(inquilinoId);
+    switch (pagoInfo?.estado) {
+      case 'pagado':
         return '#10b981';
-      case 'en_proceso':
+      case 'pendiente':
         return '#f59e0b';
-      case 'finalizado':
+      case 'atrasado':
         return '#ef4444';
       default:
         return '#6b7280';
@@ -544,6 +581,7 @@ export function InquilinosPage() {
 
   return (
     <div className="inquilinos-page">
+      {/* Page Header */}
       <div className="page-header">
         <h1 className="page-title">{t('inq.titulo')}</h1>
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
@@ -579,6 +617,7 @@ export function InquilinosPage() {
         </div>
       )}
 
+      {/* Search Bar */}
       <div className="table-toolbar">
         <div className="search-box">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -591,30 +630,6 @@ export function InquilinosPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-        </div>
-        <div className="view-toggle">
-          <button
-            className={`view-btn ${viewMode === 'map' ? 'active' : ''}`}
-            onClick={() => setViewMode('map')}
-            title={t('inq.vistaMapa')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-          </button>
-          <button
-            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-            onClick={() => setViewMode('grid')}
-            title={t('inq.vistaGrid')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -643,513 +658,303 @@ export function InquilinosPage() {
         </div>
       ) : (
         <>
-          {/* Map View - Split Layout */}
-          {viewMode === 'map' && (
-            <div style={{
-              display: 'flex',
-              gap: '16px',
-              marginTop: '24px',
-              height: '600px',
-            }}>
-              {/* Map Panel */}
-              <div style={{ flex: '1 1 65%', minWidth: 0 }}>
-                {isMapLoaded ? (
-                  <GoogleMap
-                    mapContainerStyle={mapContainerStyle}
-                    center={mapCenter}
-                    zoom={mapZoom}
-                    onLoad={onMapLoad}
-                    options={mapOptions}
-                  >
-                    {geocodedInquilinos.map((geo) => {
-                      const isSelected = geo.inquilino.id === selectedInquilinoId;
-                      const color = getMarkerColor(geo.inquilino.contratoEstado);
-
-                      return (
-                        <OverlayViewF
-                          key={geo.inquilino.id}
-                          position={{ lat: geo.lat, lng: geo.lng }}
-                          mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-                        >
-                          <div
-                            onClick={() => setSelectedInquilinoId(isSelected ? null : geo.inquilino.id)}
-                            style={{
-                              transform: 'translate(-50%, -100%)',
-                              cursor: 'pointer',
-                              transition: 'transform 0.2s ease',
-                            }}
-                          >
-                            <div
-                              style={{
-                                backgroundColor: isSelected ? '#1f2937' : color,
-                                color: 'white',
-                                padding: '6px 12px',
-                                borderRadius: '20px',
-                                fontSize: '13px',
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap',
-                                boxShadow: isSelected
-                                  ? '0 4px 12px rgba(0,0,0,0.4)'
-                                  : '0 2px 8px rgba(0,0,0,0.2)',
-                                transform: isSelected ? 'scale(1.15)' : 'scale(1)',
-                                transition: 'all 0.2s ease',
-                                position: 'relative',
-                                zIndex: isSelected ? 10 : 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                              }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                              </svg>
-                              {geo.inquilino.nombre} {geo.inquilino.apellido}
-                            </div>
-                            <div
-                              style={{
-                                width: 0,
-                                height: 0,
-                                borderLeft: '6px solid transparent',
-                                borderRight: '6px solid transparent',
-                                borderTop: `6px solid ${isSelected ? '#1f2937' : color}`,
-                                margin: '0 auto',
-                              }}
-                            />
-                            {isSelected && (
-                              <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                marginTop: '8px',
-                                backgroundColor: 'white',
-                                borderRadius: '8px',
-                                padding: '12px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                minWidth: '200px',
-                                zIndex: 20,
-                              }}>
-                                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
-                                  {geo.inquilino.nombre} {geo.inquilino.apellido}
-                                </div>
-                                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>
-                                  {geo.inquilino.email}
-                                </div>
-                                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                                  {geo.inquilino.telefono}
-                                </div>
-                                {geo.inquilino.direccionContacto && (
-                                  <div style={{ fontSize: '12px', color: '#374151', marginBottom: '4px' }}>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
-                                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                      <circle cx="12" cy="10" r="3" />
-                                    </svg>
-                                    {geo.inquilino.direccionContacto}
-                                  </div>
-                                )}
-                                <span className={`badge ${getContratoEstadoClass(geo.inquilino.contratoEstado)}`} style={{ fontSize: '11px' }}>
-                                  {getContratoEstadoLabel(geo.inquilino.contratoEstado)}
-                                </span>
-                                <div style={{ marginTop: '8px', display: 'flex', gap: '4px' }}>
-                                  <button
-                                    className="btn btn-outline btn-sm"
-                                    onClick={(e) => { e.stopPropagation(); handleOpenModal(geo.inquilino); }}
-                                    style={{ fontSize: '11px', padding: '2px 8px' }}
-                                  >
-                                    {t('inq.editarBtn')}
-                                  </button>
-                                  <button
-                                    className="btn btn-outline btn-sm"
-                                    onClick={(e) => { e.stopPropagation(); handleContactar(geo.inquilino); }}
-                                    style={{ fontSize: '11px', padding: '2px 8px' }}
-                                  >
-                                    {t('inq.contactar')}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </OverlayViewF>
-                      );
-                    })}
-                  </GoogleMap>
-                ) : (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100%',
-                    backgroundColor: '#f9fafb',
-                    borderRadius: '12px',
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        border: '3px solid #e5e7eb',
-                        borderTop: '3px solid #3b82f6',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                        margin: '0 auto',
-                      }} />
-                      <p style={{ marginTop: '12px', color: '#6b7280', fontSize: '14px' }}>
-                        Cargando mapa...
-                      </p>
-                    </div>
-                  </div>
-                )}
+          {/* Main Layout: Tenant List + Map */}
+          <div className="inq-main-layout">
+            {/* Tenant List Panel */}
+            <div className="inq-list-panel">
+              <div className="inq-list-header">
+                <h3>{t('inq.titulo')}</h3>
+                <span className="inq-list-count">{totalElements}</span>
               </div>
+              <div className="inq-list-scroll">
+                {inquilinos.map((inquilino) => {
+                  const pagoInfo = pagosPorInquilino.get(inquilino.id);
+                  const isSelected = inquilino.id === selectedInquilinoId;
+                  const hasGeocode = geocodedInquilinos.some(g => g.inquilino.id === inquilino.id);
 
-              {/* Tenant List Panel */}
-              <div style={{
-                flex: '0 0 35%',
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  padding: '16px 20px',
-                  borderBottom: '1px solid #e5e7eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>
-                    {t('inq.titulo')}
-                  </h3>
-                  <span style={{
-                    fontSize: '13px',
-                    color: '#6b7280',
-                    backgroundColor: '#f1f5f9',
-                    padding: '2px 10px',
-                    borderRadius: '12px',
-                    fontWeight: 500,
-                  }}>
-                    {inquilinos.length}
-                  </span>
-                </div>
-                <div style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  padding: '8px',
-                }}>
-                  {inquilinos.map((inquilino) => {
-                    const isSelected = inquilino.id === selectedInquilinoId;
-                    const hasGeocode = geocodedInquilinos.some(g => g.inquilino.id === inquilino.id);
-                    return (
-                      <div
-                        key={inquilino.id}
-                        onClick={() => {
-                          setSelectedInquilinoId(isSelected ? null : inquilino.id);
-                          if (!isSelected && hasGeocode) {
-                            const geo = geocodedInquilinos.find(g => g.inquilino.id === inquilino.id);
-                            if (geo && mapRef.current) {
-                              mapRef.current.panTo({ lat: geo.lat, lng: geo.lng });
-                              mapRef.current.setZoom(15);
-                            }
+                  return (
+                    <div
+                      key={inquilino.id}
+                      className={`inq-card ${isSelected ? 'inq-card-selected' : ''}`}
+                      onClick={() => {
+                        setSelectedInquilinoId(isSelected ? null : inquilino.id);
+                        if (!isSelected && hasGeocode) {
+                          const geo = geocodedInquilinos.find(g => g.inquilino.id === inquilino.id);
+                          if (geo && mapRef.current) {
+                            mapRef.current.panTo({ lat: geo.lat, lng: geo.lng });
+                            mapRef.current.setZoom(15);
                           }
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          padding: '12px',
-                          borderRadius: '10px',
-                          cursor: 'pointer',
-                          backgroundColor: isSelected ? '#eff6ff' : 'transparent',
-                          border: isSelected ? '1px solid #bfdbfe' : '1px solid transparent',
-                          marginBottom: '4px',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <TenantAvatar
-                          src={inquilino.avatar}
-                          alt={`${inquilino.nombre} ${inquilino.apellido}`}
-                          size={42}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '8px',
-                          }}>
-                            <span style={{
-                              fontWeight: 600,
-                              fontSize: '14px',
-                              color: '#1e293b',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}>
+                        }
+                      }}
+                    >
+                      {/* Card Top: Avatar + Name + Status */}
+                      <div className="inq-card-top">
+                        <div className="inq-card-identity">
+                          <TenantAvatar
+                            src={inquilino.avatar}
+                            alt={`${inquilino.nombre} ${inquilino.apellido}`}
+                            size={44}
+                          />
+                          <div className="inq-card-name-block">
+                            <span className="inq-card-name">
                               {inquilino.nombre} {inquilino.apellido}
                             </span>
-                            <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`} style={{ fontSize: '10px', flexShrink: 0 }}>
-                              {getContratoEstadoLabel(inquilino.contratoEstado)}
+                            <span className="inq-card-property">
+                              {inquilino.propiedad ? inquilino.propiedad.nombre : t('inq.sinPropiedadCorta')}
                             </span>
                           </div>
-                          {inquilino.propiedad ? (
-                            <span style={{
-                              fontSize: '12px',
-                              color: '#6b7280',
-                              display: 'block',
-                              marginTop: '2px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}>
-                              {inquilino.propiedad.nombre}
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: '12px', color: '#9ca3af', display: 'block', marginTop: '2px' }}>
-                              {t('inq.sinPropiedad')}
-                            </span>
-                          )}
-                          {inquilino.direccionContacto && (
-                            <span style={{
-                              fontSize: '11px',
-                              color: '#94a3b8',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              marginTop: '2px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                <circle cx="12" cy="10" r="3" />
-                              </svg>
-                              {inquilino.direccionContacto}
-                            </span>
-                          )}
-                          {!inquilino.direccionContacto && (
-                            <span style={{
-                              fontSize: '11px',
-                              color: '#d1d5db',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              marginTop: '2px',
-                              fontStyle: 'italic',
-                            }}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                <circle cx="12" cy="10" r="3" />
-                              </svg>
-                              {t('inq.sinDireccion')}
-                            </span>
-                          )}
+                        </div>
+                        <span className={`inq-status-badge ${getPaymentStatusClass(pagoInfo?.estado)}`}>
+                          {getPaymentStatusLabel(pagoInfo?.estado)}
+                        </span>
+                      </div>
+
+                      {/* Card Info Row: Address + Email */}
+                      <div className="inq-card-info-row">
+                        <div className="inq-card-info-item">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                          </svg>
+                          <span>
+                            {inquilino.propiedad
+                              ? `${inquilino.propiedad.direccion}, ${inquilino.propiedad.ciudad}`
+                              : inquilino.direccionContacto || t('inq.sinDireccion')}
+                          </span>
+                        </div>
+                        <div className="inq-card-info-item">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                          </svg>
+                          <span>{inquilino.email}</span>
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {/* Card Payment Row: Monto + Vencimiento */}
+                      <div className="inq-card-payment-row">
+                        <div className="inq-card-payment-item">
+                          <span className="inq-card-payment-label">{t('inq.montoMes')}</span>
+                          <span className="inq-card-payment-value">{formatCurrency(pagoInfo?.monto)}</span>
+                        </div>
+                        <div className="inq-card-payment-item">
+                          <span className="inq-card-payment-label">{t('inq.fechaVencimiento')}</span>
+                          <span className="inq-card-payment-value">{formatDate(pagoInfo?.fechaVencimiento)}</span>
+                        </div>
+                      </div>
+
+                      {/* Card Actions */}
+                      <div className="inq-card-actions">
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={(e) => { e.stopPropagation(); handleOpenModal(inquilino); }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                          {t('inq.editarBtn')}
+                        </button>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={(e) => { e.stopPropagation(); handleContactar(inquilino); }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                          </svg>
+                          {t('inq.contactar')}
+                        </button>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(inquilino.id); }}
+                          style={{ color: '#dc2626', borderColor: '#fecaca' }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3,6 5,6 21,6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                          {t('inq.eliminar')}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination */}
+              <div className="inq-pagination">
+                <span className="pagination-info">
+                  {totalElements > 0 ? `${startItem}-${endItem} de ${totalElements}` : `0 ${t('pag.resultados')}`}
+                </span>
+                <div className="pagination-controls">
+                  <button
+                    className="pagination-btn"
+                    disabled={currentPage === 0}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                  >
+                    &lt;
+                  </button>
+                  {getPageNumbers().map((page) => (
+                    <button
+                      key={page}
+                      className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page + 1}
+                    </button>
+                  ))}
+                  <button
+                    className="pagination-btn"
+                    disabled={currentPage >= totalPages - 1}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                  >
+                    &gt;
+                  </button>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Grid View */}
-          {viewMode === 'grid' && (
-            <div className="inquilinos-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: '24px',
-              marginTop: '24px'
-            }}>
-              {inquilinos.map((inquilino) => (
-                <div key={inquilino.id} className="inquilino-card" style={{
-                  backgroundColor: 'white',
-                  borderRadius: '12px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  border: '1px solid #e5e7eb',
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  transition: 'box-shadow 0.2s ease',
-                }}>
-                  {/* Header: Avatar + Name + Contract Status */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <TenantAvatar
-                        src={inquilino.avatar}
-                        alt={`${inquilino.nombre} ${inquilino.apellido}`}
-                        size={48}
-                      />
-                      <div>
-                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>
-                          {inquilino.nombre} {inquilino.apellido}
-                        </h4>
-                        <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#6b7280' }}>
-                          {inquilino.email}
-                        </p>
-                      </div>
-                    </div>
-                    {inquilino.contratoEstado && inquilino.contratoEstado !== 'sin_contrato' ? (
-                      <span className={`badge ${getContratoEstadoClass(inquilino.contratoEstado)}`}>
-                        {getContratoEstadoLabel(inquilino.contratoEstado)}
-                      </span>
-                    ) : (
-                      <span className="badge badge-secondary">{t('inq.sinContrato')}</span>
-                    )}
-                  </div>
-
-                  {/* Contact Address */}
-                  {inquilino.direccionContacto && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '6px',
-                      fontSize: '13px',
-                      color: '#374151',
-                    }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" style={{ marginTop: '2px', flexShrink: 0 }}>
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                        <circle cx="12" cy="10" r="3" />
-                      </svg>
-                      {inquilino.direccionContacto}
-                    </div>
-                  )}
-
-                  {/* Property Info */}
-                  <div style={{
-                    padding: '0.75rem',
-                    backgroundColor: '#f9fafb',
-                    borderRadius: '8px',
-                  }}>
-                    {inquilino.propiedad ? (
-                      <>
-                        <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#374151' }}>
-                          {inquilino.propiedad.nombre}
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '2px' }}>
-                          {inquilino.propiedad.direccion}, {inquilino.propiedad.ciudad}
-                        </div>
-                      </>
-                    ) : (
-                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>{t('inq.sinPropiedad')}</span>
-                    )}
-                  </div>
-
-                  {/* Details */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>{t('inq.telefono')}</span>
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>{inquilino.telefono}</span>
-                    </div>
-                    {inquilino.contratoFin && (
-                      <div>
-                        <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>{t('inq.vencimiento')}</span>
-                        <span style={{ fontSize: '14px', fontWeight: '500' }}>{formatDate(inquilino.contratoFin)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Document badge */}
-                  {inquilino.documentoIdentidadUrl && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <a
-                        href={inquilino.documentoIdentidadUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '12px',
-                          color: '#3b82f6',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <polyline points="14,2 14,8 20,8" />
-                        </svg>
-                        {t('inq.verDocumento')}
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
-                    <button
-                      className="btn btn-outline btn-sm"
-                      onClick={() => handleOpenModal(inquilino)}
-                      style={{ flex: 1 }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                      {t('inq.editarBtn')}
-                    </button>
-                    <button
-                      className="btn btn-outline btn-sm"
-                      onClick={() => handleContactar(inquilino)}
-                      style={{ flex: 1 }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                        <polyline points="22,6 12,13 2,6" />
-                      </svg>
-                      {t('inq.contactar')}
-                    </button>
-                    <button
-                      className="btn btn-outline btn-sm btn-danger-text"
-                      onClick={() => handleDelete(inquilino.id)}
-                      style={{ color: '#dc2626', borderColor: '#dc2626' }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3,6 5,6 21,6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                      {t('inq.eliminar')}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="table-pagination">
-            <span className="pagination-info">
-              {totalElements > 0 ? `${startItem}-${endItem} de ${totalElements}` : `0 ${t('pag.resultados')}`}
-            </span>
-            <div className="pagination-controls">
-              <button
-                className="pagination-btn"
-                disabled={currentPage === 0}
-                onClick={() => handlePageChange(currentPage - 1)}
-              >
-                &lt;
-              </button>
-              {getPageNumbers().map((page) => (
-                <button
-                  key={page}
-                  className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
-                  onClick={() => handlePageChange(page)}
+            {/* Map Panel */}
+            <div className="inq-map-panel">
+              {isMapLoaded ? (
+                <GoogleMap
+                  mapContainerStyle={mapContainerStyle}
+                  center={mapCenter}
+                  zoom={mapZoom}
+                  onLoad={onMapLoad}
+                  options={mapOptions}
                 >
-                  {page + 1}
-                </button>
-              ))}
-              <button
-                className="pagination-btn"
-                disabled={currentPage >= totalPages - 1}
-                onClick={() => handlePageChange(currentPage + 1)}
-              >
-                &gt;
-              </button>
+                  {geocodedInquilinos.map((geo) => {
+                    const isSelected = geo.inquilino.id === selectedInquilinoId;
+                    const color = getMarkerColor(geo.inquilino.id);
+
+                    return (
+                      <OverlayViewF
+                        key={geo.inquilino.id}
+                        position={{ lat: geo.lat, lng: geo.lng }}
+                        mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                      >
+                        <div
+                          onClick={() => setSelectedInquilinoId(isSelected ? null : geo.inquilino.id)}
+                          style={{
+                            transform: 'translate(-50%, -100%)',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s ease',
+                          }}
+                        >
+                          <div
+                            style={{
+                              backgroundColor: isSelected ? '#1f2937' : color,
+                              color: 'white',
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap',
+                              boxShadow: isSelected
+                                ? '0 4px 12px rgba(0,0,0,0.4)'
+                                : '0 2px 8px rgba(0,0,0,0.2)',
+                              transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                              transition: 'all 0.2s ease',
+                              position: 'relative',
+                              zIndex: isSelected ? 10 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                              <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            {geo.inquilino.nombre} {geo.inquilino.apellido}
+                          </div>
+                          <div
+                            style={{
+                              width: 0,
+                              height: 0,
+                              borderLeft: '6px solid transparent',
+                              borderRight: '6px solid transparent',
+                              borderTop: `6px solid ${isSelected ? '#1f2937' : color}`,
+                              margin: '0 auto',
+                            }}
+                          />
+                          {isSelected && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              marginTop: '8px',
+                              backgroundColor: 'white',
+                              borderRadius: '12px',
+                              padding: '16px',
+                              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                              minWidth: '220px',
+                              zIndex: 20,
+                            }}>
+                              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: '#1e293b' }}>
+                                {geo.inquilino.nombre} {geo.inquilino.apellido}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>
+                                {geo.inquilino.email}
+                              </div>
+                              {geo.inquilino.propiedad && (
+                                <div style={{ fontSize: '12px', color: '#374151', marginBottom: '4px', fontWeight: 500 }}>
+                                  {geo.inquilino.propiedad.nombre}
+                                </div>
+                              )}
+                              {(() => {
+                                const pagoInfo = pagosPorInquilino.get(geo.inquilino.id);
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                                    <span className={`inq-status-badge ${getPaymentStatusClass(pagoInfo?.estado)}`} style={{ fontSize: '11px' }}>
+                                      {getPaymentStatusLabel(pagoInfo?.estado)}
+                                    </span>
+                                    {pagoInfo?.monto != null && (
+                                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#1e293b' }}>
+                                        {formatCurrency(pagoInfo.monto)}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                              <div style={{ marginTop: '10px', display: 'flex', gap: '4px' }}>
+                                <button
+                                  className="btn btn-outline btn-sm"
+                                  onClick={(e) => { e.stopPropagation(); handleOpenModal(geo.inquilino); }}
+                                  style={{ fontSize: '11px', padding: '2px 8px' }}
+                                >
+                                  {t('inq.editarBtn')}
+                                </button>
+                                <button
+                                  className="btn btn-outline btn-sm"
+                                  onClick={(e) => { e.stopPropagation(); handleContactar(geo.inquilino); }}
+                                  style={{ fontSize: '11px', padding: '2px 8px' }}
+                                >
+                                  {t('inq.contactar')}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </OverlayViewF>
+                    );
+                  })}
+                </GoogleMap>
+              ) : (
+                <div className="inq-map-loading">
+                  <div className="inq-map-spinner" />
+                  <p>Cargando mapa...</p>
+                </div>
+              )}
             </div>
           </div>
         </>
       )}
 
+      {/* Modal - Keep existing CRUD modal */}
       {showModal && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>

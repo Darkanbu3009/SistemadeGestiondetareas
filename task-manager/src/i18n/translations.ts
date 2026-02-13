@@ -315,6 +315,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'inq.subiendoDocumento': 'Subiendo documento...',
     'inq.errorFoto': 'Error al subir la foto',
     'inq.errorDocumento': 'Error al subir el documento',
+    'inq.alCorriente': 'Al corriente',
+    'inq.pendientePago': 'Pendiente',
+    'inq.sinPagos': 'Sin pagos',
+    'inq.montoMes': 'Monto/mes',
+    'inq.fechaVencimiento': 'Fecha de vencimiento',
 
     // Payments
     'pag.titulo': 'Pagos',
@@ -777,6 +782,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'inq.subiendoDocumento': 'Uploading document...',
     'inq.errorFoto': 'Error uploading photo',
     'inq.errorDocumento': 'Error uploading document',
+    'inq.alCorriente': 'Up to date',
+    'inq.pendientePago': 'Pending',
+    'inq.sinPagos': 'No payments',
+    'inq.montoMes': 'Amount/month',
+    'inq.fechaVencimiento': 'Due date',
 
     // Payments
     'pag.titulo': 'Payments',
