@@ -4,6 +4,7 @@ import com.taskmanager.backend.dto.InquilinoRequest;
 import com.taskmanager.backend.model.Inquilino;
 import com.taskmanager.backend.model.User;
 import com.taskmanager.backend.repository.UserRepository;
+import com.taskmanager.backend.service.FileStorageService;
 import com.taskmanager.backend.service.InquilinoService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -24,10 +26,12 @@ public class InquilinoController {
 
     private final InquilinoService service;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
-    public InquilinoController(InquilinoService service, UserRepository userRepository) {
+    public InquilinoController(InquilinoService service, UserRepository userRepository, FileStorageService fileStorageService) {
         this.service = service;
         this.userRepository = userRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     private User getCurrentUser() {
@@ -85,6 +89,7 @@ public class InquilinoController {
         inquilino.setTelefono(request.getTelefono());
         inquilino.setDocumento(request.getDocumento());
         inquilino.setAvatar(request.getAvatar());
+        inquilino.setDireccionContacto(request.getDireccionContacto());
 
         Inquilino created = service.create(inquilino, request.getPropiedadId(), user);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -101,6 +106,7 @@ public class InquilinoController {
         inquilino.setTelefono(request.getTelefono());
         inquilino.setDocumento(request.getDocumento());
         inquilino.setAvatar(request.getAvatar());
+        inquilino.setDireccionContacto(request.getDireccionContacto());
 
         Inquilino updated = service.update(id, inquilino, request.getPropiedadId(), user);
         return ResponseEntity.ok(updated);
@@ -123,5 +129,51 @@ public class InquilinoController {
     public ResponseEntity<Long> countActivos() {
         User user = getCurrentUser();
         return ResponseEntity.ok(service.countActiveByUser(user));
+    }
+
+    @PostMapping("/{id}/upload-avatar")
+    public ResponseEntity<Inquilino> uploadAvatar(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        User user = getCurrentUser();
+        Inquilino inquilino = service.getById(id, user);
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new RuntimeException("Solo se permiten archivos de imagen");
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new RuntimeException("El archivo no puede superar los 5MB");
+        }
+
+        // Delete old avatar if exists
+        if (inquilino.getAvatar() != null && !inquilino.getAvatar().isEmpty()) {
+            fileStorageService.deleteFile(inquilino.getAvatar());
+        }
+
+        String avatarUrl = fileStorageService.uploadFile(file, "avatars-inquilinos");
+        inquilino.setAvatar(avatarUrl);
+        return ResponseEntity.ok(service.save(inquilino));
+    }
+
+    @PostMapping("/{id}/upload-documento-identidad")
+    public ResponseEntity<Inquilino> uploadDocumentoIdentidad(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        User user = getCurrentUser();
+        Inquilino inquilino = service.getById(id, user);
+
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.startsWith("image/") && !contentType.equals("application/pdf"))) {
+            throw new RuntimeException("Solo se permiten archivos de imagen o PDF");
+        }
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new RuntimeException("El archivo no puede superar los 10MB");
+        }
+
+        // Delete old document if exists
+        if (inquilino.getDocumentoIdentidadUrl() != null && !inquilino.getDocumentoIdentidadUrl().isEmpty()) {
+            fileStorageService.deleteFile(inquilino.getDocumentoIdentidadUrl());
+        }
+
+        String docUrl = fileStorageService.uploadFile(file, "documentos-identidad");
+        inquilino.setDocumentoIdentidadUrl(docUrl);
+        return ResponseEntity.ok(service.save(inquilino));
     }
 }

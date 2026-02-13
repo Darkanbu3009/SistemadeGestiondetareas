@@ -30,6 +30,9 @@ public class InquilinoRequest {
     @Size(max = 500, message = "La URL del avatar no puede exceder 500 caracteres")
     private String avatar;
 
+    @Size(max = 500, message = "La dirección de contacto no puede exceder 500 caracteres")
+    private String direccionContacto;
+
     private Long propiedadId;
 
     // Getters and Setters
@@ -79,6 +82,14 @@ public class InquilinoRequest {
 
     public void setAvatar(String avatar) {
         this.avatar = avatar;
+    }
+
+    public String getDireccionContacto() {
+        return direccionContacto;
+    }
+
+    public void setDireccionContacto(String direccionContacto) {
+        this.direccionContacto = direccionContacto;
     }
 
     public Long getPropiedadId() {

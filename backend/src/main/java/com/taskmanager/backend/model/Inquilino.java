@@ -40,6 +40,14 @@ public class Inquilino {
     @Size(max = 500)
     private String avatar;
 
+    @Size(max = 500)
+    @Column(name = "direccion_contacto")
+    private String direccionContacto;
+
+    @Size(max = 500)
+    @Column(name = "documento_identidad_url")
+    private String documentoIdentidadUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "propiedad_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "user"})
@@ -143,6 +151,22 @@ public class Inquilino {
 
     public void setAvatar(String avatar) {
         this.avatar = avatar;
+    }
+
+    public String getDireccionContacto() {
+        return direccionContacto;
+    }
+
+    public void setDireccionContacto(String direccionContacto) {
+        this.direccionContacto = direccionContacto;
+    }
+
+    public String getDocumentoIdentidadUrl() {
+        return documentoIdentidadUrl;
+    }
+
+    public void setDocumentoIdentidadUrl(String documentoIdentidadUrl) {
+        this.documentoIdentidadUrl = documentoIdentidadUrl;
     }
 
     public Propiedad getPropiedad() {

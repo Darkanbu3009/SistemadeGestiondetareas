@@ -87,6 +87,8 @@ export interface Inquilino {
   telefono: string;
   documento: string;
   avatar?: string;
+  direccionContacto?: string;
+  documentoIdentidadUrl?: string;
   propiedadId?: number;
   propiedad?: Propiedad;
   contratoEstado?: 'activo' | 'en_proceso' | 'finalizado' | 'sin_contrato';
@@ -167,6 +169,7 @@ export interface InquilinoFormData {
   telefono: string;
   documento: string;
   avatar?: string;
+  direccionContacto?: string;
   propiedadId?: number;
 }
 
