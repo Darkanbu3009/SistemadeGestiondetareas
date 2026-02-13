@@ -5,6 +5,7 @@ import {
   createPropiedad,
   updatePropiedad,
   deletePropiedad,
+  uploadPropiedadImagen,
 } from '../../services/propiedadService';
 import { getInquilinosByPropiedad } from '../../services/inquilinosService';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -42,6 +43,8 @@ export function PropiedadesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const mapListRef = useRef<HTMLDivElement>(null);
 
   // Load properties from API and fetch associated tenants
@@ -102,6 +105,8 @@ export function PropiedadesPage() {
       setEditingPropiedad(null);
       setFormData(emptyFormData);
     }
+    setImageFile(null);
+    setImagePreview(null);
     setShowModal(true);
   };
 
@@ -109,6 +114,8 @@ export function PropiedadesPage() {
     setShowModal(false);
     setEditingPropiedad(null);
     setFormData(emptyFormData);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -123,12 +130,10 @@ export function PropiedadesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setImageFile(file);
     const reader = new FileReader();
     reader.onload = () => {
-      setFormData((prev) => ({
-        ...prev,
-        imagen: reader.result as string,
-      }));
+      setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
   };
@@ -139,13 +144,31 @@ export function PropiedadesPage() {
     setError(null);
 
     try {
-      if (editingPropiedad) {
-        await updatePropiedad(editingPropiedad.id, formData);
-      } else {
-        await createPropiedad(formData);
+      // Don't send image in JSON body - it will be uploaded separately
+      const dataToSend = { ...formData };
+      if (imageFile) {
+        dataToSend.imagen = editingPropiedad?.imagen || '';
       }
+
+      let savedPropiedad;
+      if (editingPropiedad) {
+        savedPropiedad = await updatePropiedad(editingPropiedad.id, dataToSend);
+      } else {
+        savedPropiedad = await createPropiedad(dataToSend);
+      }
+
+      // Upload image file if selected
+      if (imageFile) {
+        try {
+          await uploadPropiedadImagen(savedPropiedad.id, imageFile);
+        } catch (err) {
+          console.error('Error uploading image:', err);
+          setError('Propiedad guardada pero hubo un error al subir la imagen');
+        }
+      }
+
       handleCloseModal();
-      loadPropiedades(); // Recargar para obtener datos actualizados
+      loadPropiedades();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar propiedad');
     } finally {
@@ -793,14 +816,14 @@ export function PropiedadesPage() {
                     onChange={handleImageFileChange}
                     style={{ padding: '8px' }}
                   />
-                  {formData.imagen && (
+                  {(imagePreview || formData.imagen) && (
                     <div style={{
                       marginTop: '8px',
                       position: 'relative',
                       display: 'inline-block',
                     }}>
                       <img
-                        src={formData.imagen}
+                        src={imagePreview || formData.imagen}
                         alt="Preview"
                         style={{
                           maxWidth: '100%',
@@ -813,7 +836,11 @@ export function PropiedadesPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, imagen: '' }))}
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview(null);
+                          setFormData((prev) => ({ ...prev, imagen: '' }));
+                        }}
                         style={{
                           position: 'absolute',
                           top: '4px',

@@ -127,3 +127,20 @@ export const getPropiedadesCountByEstado = async (estado: string): Promise<numbe
 
   return handleResponse(response);
 };
+
+// Upload property image
+export const uploadPropiedadImagen = async (id: number, file: File): Promise<Propiedad> => {
+  const token = localStorage.getItem('token');
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_URL}/propiedades/${id}/upload-imagen`, {
+    method: 'POST',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: formData,
+  });
+
+  return handleResponse(response);
+};
