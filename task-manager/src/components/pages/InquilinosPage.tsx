@@ -1027,7 +1027,7 @@ export function InquilinosPage() {
 
       {showModal && (
         <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header">
               <h2>{editingInquilino ? t('inq.editar') : t('inq.agregarTitle')}</h2>
               <button className="modal-close" onClick={handleCloseModal}>
@@ -1037,8 +1037,8 @@ export function InquilinosPage() {
                 </svg>
               </button>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div className="modal-body" style={{ overflowY: 'auto', flex: 1 }}>
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="nombre">{t('inq.nombre')}</label>

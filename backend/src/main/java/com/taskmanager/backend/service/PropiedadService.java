@@ -121,4 +121,8 @@ public class PropiedadService {
     public Long countByUserAndEstado(User user, String estado) {
         return repository.countByUserAndEstado(user, estado);
     }
+
+    public Propiedad save(Propiedad propiedad) {
+        return repository.save(propiedad);
+    }
 }
