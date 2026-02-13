@@ -119,6 +119,20 @@ export function PropiedadesPage() {
     }));
   };
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData((prev) => ({
+        ...prev,
+        imagen: reader.result as string,
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -503,6 +517,7 @@ export function PropiedadesPage() {
                     overflow: 'hidden',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
+                    flexShrink: 0,
                   }}
                 >
                   <div style={{ display: 'flex', gap: '12px', padding: '12px' }}>
@@ -769,15 +784,58 @@ export function PropiedadesPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="imagen">{t('prop.urlImagen')}</label>
+                  <label htmlFor="imagen">{t('prop.adjuntarImagen')}</label>
                   <input
-                    type="url"
+                    type="file"
                     id="imagen"
                     name="imagen"
-                    value={formData.imagen}
-                    onChange={handleInputChange}
-                    placeholder="https://..."
+                    accept="image/*"
+                    onChange={handleImageFileChange}
+                    style={{ padding: '8px' }}
                   />
+                  {formData.imagen && (
+                    <div style={{
+                      marginTop: '8px',
+                      position: 'relative',
+                      display: 'inline-block',
+                    }}>
+                      <img
+                        src={formData.imagen}
+                        alt="Preview"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '120px',
+                          borderRadius: '8px',
+                          objectFit: 'cover',
+                          border: '1px solid #e5e7eb',
+                        }}
+                        onError={handleImageError}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, imagen: '' }))}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          background: 'rgba(0,0,0,0.6)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '24px',
+                          height: '24px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">
