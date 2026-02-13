@@ -87,14 +87,14 @@ export function DashboardPage() {
     // Recharts may send x/y as string | number | undefined, so we guard
     if (typeof x !== 'number' || typeof y !== 'number') return null;
 
-    const colors = ['#3b82f6', '#f59e0b'];
+    const colors = ['#059669', '#e11d48'];
 
     return (
       <text
         x={x + (typeof width === 'number' ? width / 2 : 0)}
         y={y - 8}
         textAnchor="middle"
-        fill={colors[index ?? 0] ?? '#3b82f6'}
+        fill={colors[index ?? 0] ?? '#059669'}
         fontWeight={700}
         fontSize={14}
       >
@@ -376,8 +376,8 @@ export function DashboardPage() {
                   labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
                 />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={60}>
-                  <Cell fill="#3b82f6" />
-                  <Cell fill="#f59e0b" />
+                  <Cell fill="#059669" />
+                  <Cell fill="#e11d48" />
                   <LabelList
                     dataKey="value"
                     position="top"
@@ -415,8 +415,8 @@ export function DashboardPage() {
                   label={renderPieLabel}
                   labelLine={true}
                 >
-                  <Cell fill="#3b82f6" />
-                  <Cell fill="#f59e0b" />
+                  <Cell fill="#059669" />
+                  <Cell fill="#e11d48" />
                 </Pie>
                 <Tooltip
                   formatter={(value: number | undefined) => formatCurrency(value)}
@@ -479,8 +479,8 @@ export function DashboardPage() {
                   </span>
                 )}
               />
-              <Bar dataKey="income" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="pending" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="income" stackId="a" fill="#059669" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="pending" stackId="a" fill="#e11d48" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
