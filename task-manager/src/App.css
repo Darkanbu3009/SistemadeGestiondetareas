@@ -1403,6 +1403,24 @@ body {
   font-size: 0.9rem;
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.3s ease-in;
+  transition: opacity 0.5s ease-out;
+  opacity: 1;
+}
+
+.auth-error-toast.fade-out {
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .auth-page {

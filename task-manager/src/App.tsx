@@ -15,6 +15,7 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorFadingOut, setErrorFadingOut] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [showRegister, setShowRegister] = useState(false);
@@ -33,6 +34,23 @@ function App() {
     }
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (error) {
+      setErrorFadingOut(false);
+      const fadeTimer = setTimeout(() => {
+        setErrorFadingOut(true);
+      }, 3000);
+      const removeTimer = setTimeout(() => {
+        setError(null);
+        setErrorFadingOut(false);
+      }, 3500);
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(removeTimer);
+      };
+    }
+  }, [error]);
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -119,7 +137,7 @@ function App() {
       <LanguageProvider>
         <div className="auth-wrapper">
           {error && (
-            <div className="auth-error-toast">{error}</div>
+            <div className={`auth-error-toast${errorFadingOut ? ' fade-out' : ''}`}>{error}</div>
           )}
 
           {showRegister ? (
