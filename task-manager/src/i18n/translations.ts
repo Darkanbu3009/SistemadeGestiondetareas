@@ -323,6 +323,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'inq.montoMes': 'Monto/mes',
     'inq.fechaVencimiento': 'Fecha de vencimiento',
     'inq.porMes': '/mes',
+    'inq.venceFecha': 'Vence:',
+    'inq.desdeFecha': 'Desde:',
 
     // Payments
     'pag.titulo': 'Pagos',
@@ -792,6 +794,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'inq.sinPagos': 'No payments',
     'inq.montoMes': 'Amount/month',
     'inq.fechaVencimiento': 'Due date',
+    'inq.venceFecha': 'Due:',
+    'inq.desdeFecha': 'Since:',
     'inq.porMes': '/mo',
 
     // Payments

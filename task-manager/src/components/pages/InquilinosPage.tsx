@@ -29,7 +29,6 @@ const emptyFormData: InquilinoFormData = {
   propiedadId: undefined,
 };
 
-// Map configuration
 const mapContainerStyle: React.CSSProperties = {
   width: '100%',
   height: '100%',
@@ -84,7 +83,6 @@ export function InquilinosPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // File upload states
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [documentoFile, setDocumentoFile] = useState<File | null>(null);
@@ -97,21 +95,19 @@ export function InquilinosPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const pageSize = 10;
-
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Payment data for each tenant
   const [pagosPorInquilino, setPagosPorInquilino] = useState<Map<number, InquilinoPagoInfo>>(new Map());
 
-  // Map states
   const [geocodedInquilinos, setGeocodedInquilinos] = useState<GeocodedInquilino[]>([]);
   const [selectedInquilinoId, setSelectedInquilinoId] = useState<number | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [mapZoom, setMapZoom] = useState(5);
   const mapRef = useRef<google.maps.Map | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  // State to track when geocoder is ready (refs don't trigger re-renders)
+  const [geocoderReady, setGeocoderReady] = useState(false);
 
-  // Context menu state
   const [contextMenu, setContextMenu] = useState<{ id: number; x: number; y: number } | null>(null);
 
   const { isLoaded: isMapLoaded } = useJsApiLoader({
@@ -146,14 +142,11 @@ export function InquilinosPage() {
     fetchInquilinos();
   }, [fetchInquilinos]);
 
-  // Fetch payment data for tenants
   useEffect(() => {
     const fetchPagos = async () => {
       try {
         const allPagos = await getAllPagos();
         const pagoMap = new Map<number, InquilinoPagoInfo>();
-
-        // Group pagos by inquilinoId, keep the most recent one
         for (const pago of allPagos) {
           const existing = pagoMap.get(pago.inquilinoId);
           if (!existing || new Date(pago.fechaVencimiento) > new Date(existing.fechaVencimiento || '')) {
@@ -164,55 +157,67 @@ export function InquilinosPage() {
             });
           }
         }
-
         setPagosPorInquilino(pagoMap);
       } catch (err) {
         console.error('Error fetching pagos:', err);
       }
     };
-
     fetchPagos();
   }, [inquilinos]);
 
-  // Geocode inquilinos for map view
-  useEffect(() => {
-    if (!isMapLoaded || !geocoderRef.current || inquilinos.length === 0) return;
+  // Helper to get address for geocoding
+  const getGeoAddress = (inquilino: Inquilino): string | null => {
+    const contactAddr = inquilino.direccionContacto?.trim();
+    if (contactAddr && contactAddr.length > 0) return contactAddr;
+    const propAddr = inquilino.propiedad?.direccion?.trim();
+    const propCity = inquilino.propiedad?.ciudad?.trim();
+    if (propAddr) return propCity ? `${propAddr}, ${propCity}` : propAddr;
+    return null;
+  };
 
-    const geocodeInquilinos = async () => {
-      const geocoder = geocoderRef.current!;
+  // Geocode a single address
+  const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
+    const cacheKey = address.toLowerCase().trim();
+    if (geocodeCache.has(cacheKey)) {
+      return geocodeCache.get(cacheKey)!;
+    }
+    if (!geocoderRef.current) return null;
+    try {
+      const response = await new Promise<google.maps.GeocoderResult[]>(
+        (resolve, reject) => {
+          geocoderRef.current!.geocode({ address }, (res, status) => {
+            if (status === 'OK' && res && res.length > 0) {
+              resolve(res);
+            } else {
+              reject(new Error(`Geocoding failed: ${status}`));
+            }
+          });
+        }
+      );
+      const location = response[0].geometry.location;
+      const coords = { lat: location.lat(), lng: location.lng() };
+      geocodeCache.set(cacheKey, coords);
+      return coords;
+    } catch {
+      console.warn(`Could not geocode: ${address}`);
+      return null;
+    }
+  };
+
+  // Geocode all inquilinos when geocoder is ready
+  useEffect(() => {
+    if (!isMapLoaded || !geocoderReady || inquilinos.length === 0) return;
+
+    const geocodeAll = async () => {
       const results: GeocodedInquilino[] = [];
 
       for (const inquilino of inquilinos) {
-        const address = inquilino.direccionContacto || inquilino.propiedad?.direccion;
-        if (!address || address.trim() === '') continue;
+        const address = getGeoAddress(inquilino);
+        if (!address) continue;
 
-        const cacheKey = address.toLowerCase().trim();
-
-        if (geocodeCache.has(cacheKey)) {
-          const cached = geocodeCache.get(cacheKey)!;
-          results.push({ inquilino, lat: cached.lat, lng: cached.lng });
-          continue;
-        }
-
-        try {
-          const response = await new Promise<google.maps.GeocoderResult[]>(
-            (resolve, reject) => {
-              geocoder.geocode({ address }, (res, status) => {
-                if (status === 'OK' && res && res.length > 0) {
-                  resolve(res);
-                } else {
-                  reject(new Error(`Geocoding failed: ${status}`));
-                }
-              });
-            }
-          );
-
-          const location = response[0].geometry.location;
-          const coords = { lat: location.lat(), lng: location.lng() };
-          geocodeCache.set(cacheKey, coords);
+        const coords = await geocodeAddress(address);
+        if (coords) {
           results.push({ inquilino, ...coords });
-        } catch {
-          console.warn(`Could not geocode: ${address}`);
         }
 
         await new Promise((r) => setTimeout(r, 200));
@@ -223,7 +228,6 @@ export function InquilinosPage() {
       if (results.length > 0 && mapRef.current) {
         const bounds = new google.maps.LatLngBounds();
         results.forEach((r) => bounds.extend({ lat: r.lat, lng: r.lng }));
-
         if (results.length === 1) {
           setMapCenter({ lat: results[0].lat, lng: results[0].lng });
           setMapZoom(15);
@@ -233,12 +237,13 @@ export function InquilinosPage() {
       }
     };
 
-    geocodeInquilinos();
-  }, [isMapLoaded, inquilinos]);
+    geocodeAll();
+  }, [isMapLoaded, geocoderReady, inquilinos]);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     geocoderRef.current = new google.maps.Geocoder();
+    setGeocoderReady(true);
   }, []);
 
   const fetchPropiedadesDisponibles = async (inquilinoActual?: Inquilino) => {
@@ -308,7 +313,6 @@ export function InquilinosPage() {
   const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) {
       setError('Solo se permiten archivos de imagen');
       return;
@@ -317,7 +321,6 @@ export function InquilinosPage() {
       setError('El archivo no puede superar los 5MB');
       return;
     }
-
     setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = () => setAvatarPreview(reader.result as string);
@@ -327,7 +330,6 @@ export function InquilinosPage() {
   const handleDocumentoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       setError('Solo se permiten archivos de imagen o PDF');
       return;
@@ -336,7 +338,6 @@ export function InquilinosPage() {
       setError('El archivo no puede superar los 10MB');
       return;
     }
-
     setDocumentoFile(file);
   };
 
@@ -344,7 +345,6 @@ export function InquilinosPage() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-
     try {
       let savedInquilino: Inquilino;
       if (editingInquilino) {
@@ -352,8 +352,6 @@ export function InquilinosPage() {
       } else {
         savedInquilino = await createInquilino(formData);
       }
-
-      // Upload avatar file if selected
       if (avatarFile) {
         setUploadingAvatar(true);
         try {
@@ -365,8 +363,6 @@ export function InquilinosPage() {
           setUploadingAvatar(false);
         }
       }
-
-      // Upload identity document if selected
       if (documentoFile) {
         setUploadingDocumento(true);
         try {
@@ -378,7 +374,6 @@ export function InquilinosPage() {
           setUploadingDocumento(false);
         }
       }
-
       handleCloseModal();
       fetchInquilinos();
     } catch (err) {
@@ -389,10 +384,7 @@ export function InquilinosPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm(t('inq.confirmarEliminar'))) {
-      return;
-    }
-
+    if (!window.confirm(t('inq.confirmarEliminar'))) return;
     try {
       await deleteInquilino(id);
       fetchInquilinos();
@@ -406,19 +398,17 @@ export function InquilinosPage() {
   };
 
   const handlePageChange = (page: number) => {
-    if (page >= 0 && page < totalPages) {
-      setCurrentPage(page);
-    }
+    if (page >= 0 && page < totalPages) setCurrentPage(page);
   };
 
   const formatDate = (dateString?: string | null) => {
-    if (!dateString) return '—';
+    if (!dateString) return null;
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   const formatCurrency = (amount?: number | null) => {
-    if (amount == null) return '—';
+    if (amount == null) return null;
     return `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
@@ -427,74 +417,60 @@ export function InquilinosPage() {
     const maxVisiblePages = 4;
     let startPage = Math.max(0, currentPage - Math.floor(maxVisiblePages / 2));
     const endPage = Math.min(totalPages, startPage + maxVisiblePages);
-
-    if (endPage - startPage < maxVisiblePages) {
-      startPage = Math.max(0, endPage - maxVisiblePages);
-    }
-
-    for (let i = startPage; i < endPage; i++) {
-      pages.push(i);
-    }
+    if (endPage - startPage < maxVisiblePages) startPage = Math.max(0, endPage - maxVisiblePages);
+    for (let i = startPage; i < endPage; i++) pages.push(i);
     return pages;
   };
 
   const startItem = currentPage * pageSize + 1;
   const endItem = Math.min((currentPage + 1) * pageSize, totalElements);
 
+  // Get display amount: pago monto first, then propiedad.rentaMensual as fallback
+  const getDisplayAmount = (inquilino: Inquilino, pagoInfo?: InquilinoPagoInfo) => {
+    if (pagoInfo?.monto != null) return pagoInfo.monto;
+    if (inquilino.propiedad?.rentaMensual != null) return inquilino.propiedad.rentaMensual;
+    return null;
+  };
+
+  // Get display date: pago fechaVencimiento first, then contract/createdAt as fallback
+  const getDisplayDate = (inquilino: Inquilino, pagoInfo?: InquilinoPagoInfo) => {
+    if (pagoInfo?.fechaVencimiento) return { date: pagoInfo.fechaVencimiento, isVence: true };
+    if (inquilino.createdAt) return { date: inquilino.createdAt, isVence: false };
+    return null;
+  };
+
   const getPaymentStatusLabel = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
     switch (estado) {
-      case 'pagado':
-        return t('inq.alCorriente');
-      case 'pendiente':
-        return t('inq.pendientePago');
-      case 'atrasado':
-        return t('inq.mora');
-      default:
-        return t('inq.nuevo');
+      case 'pagado': return t('inq.alCorriente');
+      case 'pendiente': return t('inq.pendientePago');
+      case 'atrasado': return t('inq.mora');
+      default: return t('inq.nuevo');
     }
   };
 
   const getPaymentStatusClass = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
     switch (estado) {
-      case 'pagado':
-        return 'inq-status-paid';
-      case 'pendiente':
-        return 'inq-status-pending';
-      case 'atrasado':
-        return 'inq-status-overdue';
-      default:
-        return 'inq-status-new';
+      case 'pagado': return 'inq-status-paid';
+      case 'pendiente': return 'inq-status-pending';
+      case 'atrasado': return 'inq-status-overdue';
+      default: return 'inq-status-new';
     }
   };
 
   const getStatusDotColor = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
     switch (estado) {
-      case 'pagado':
-        return '#10b981';
-      case 'pendiente':
-        return '#f59e0b';
-      case 'atrasado':
-        return '#ef4444';
-      default:
-        return '#8b5cf6';
+      case 'pagado': return '#10b981';
+      case 'pendiente': return '#f59e0b';
+      case 'atrasado': return '#ef4444';
+      default: return '#8b5cf6';
     }
   };
 
   const getMarkerColor = (inquilinoId: number) => {
     const pagoInfo = pagosPorInquilino.get(inquilinoId);
-    switch (pagoInfo?.estado) {
-      case 'pagado':
-        return '#10b981';
-      case 'pendiente':
-        return '#f59e0b';
-      case 'atrasado':
-        return '#ef4444';
-      default:
-        return '#8b5cf6';
-    }
+    return getStatusDotColor(pagoInfo?.estado);
   };
 
-  // Close context menu on outside click
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
     if (contextMenu) {
@@ -503,13 +479,28 @@ export function InquilinosPage() {
     }
   }, [contextMenu]);
 
-  const handleCardClick = (inquilino: Inquilino) => {
+  const handleCardClick = async (inquilino: Inquilino) => {
     const isSelected = inquilino.id === selectedInquilinoId;
     setSelectedInquilinoId(isSelected ? null : inquilino.id);
     setContextMenu(null);
 
     if (!isSelected) {
-      const geo = geocodedInquilinos.find(g => g.inquilino.id === inquilino.id);
+      // Check if already geocoded
+      let geo = geocodedInquilinos.find(g => g.inquilino.id === inquilino.id);
+
+      // If not geocoded yet, try geocoding on demand
+      if (!geo && geocoderRef.current) {
+        const address = getGeoAddress(inquilino);
+        if (address) {
+          const coords = await geocodeAddress(address);
+          if (coords) {
+            const newGeo: GeocodedInquilino = { inquilino, ...coords };
+            setGeocodedInquilinos(prev => [...prev, newGeo]);
+            geo = newGeo;
+          }
+        }
+      }
+
       if (geo && mapRef.current) {
         mapRef.current.panTo({ lat: geo.lat, lng: geo.lng });
         mapRef.current.setZoom(15);
@@ -534,12 +525,7 @@ export function InquilinosPage() {
 
     const isValidUrl = (url?: string): boolean => {
       if (!url || url.trim() === '') return false;
-      try {
-        new URL(url);
-        return true;
-      } catch {
-        return false;
-      }
+      try { new URL(url); return true; } catch { return false; }
     };
 
     const showFallback = !src || !isValidUrl(src) || imageError;
@@ -549,26 +535,12 @@ export function InquilinosPage() {
         <div
           className="tenant-avatar-fallback"
           style={{
-            width: size,
-            height: size,
-            minWidth: size,
-            minHeight: size,
-            backgroundColor: '#e5e7eb',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#9ca3af'
+            width: size, height: size, minWidth: size, minHeight: size,
+            backgroundColor: '#e5e7eb', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af'
           }}
         >
-          <svg
-            width={size * 0.5}
-            height={size * 0.5}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
+          <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
@@ -579,47 +551,27 @@ export function InquilinosPage() {
     return (
       <div style={{ position: 'relative', width: size, height: size, minWidth: size, minHeight: size }}>
         {!imageLoaded && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: size,
-              height: size,
-              backgroundColor: '#e5e7eb',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <div style={{
+            position: 'absolute', top: 0, left: 0, width: size, height: size,
+            backgroundColor: '#e5e7eb', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
             <div style={{
-              width: size * 0.4,
-              height: size * 0.4,
-              border: '2px solid #d1d5db',
-              borderTop: '2px solid #3b82f6',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
+              width: size * 0.4, height: size * 0.4,
+              border: '2px solid #d1d5db', borderTop: '2px solid #3b82f6',
+              borderRadius: '50%', animation: 'spin 1s linear infinite'
             }} />
           </div>
         )}
         <img
-          src={src}
-          alt={alt}
+          src={src} alt={alt}
           style={{
-            width: size,
-            height: size,
-            borderRadius: '50%',
-            objectFit: 'cover',
-            display: imageLoaded ? 'block' : 'none'
+            width: size, height: size, borderRadius: '50%',
+            objectFit: 'cover', display: imageLoaded ? 'block' : 'none'
           }}
           onLoad={() => setImageLoaded(true)}
-          onError={() => {
-            setImageError(true);
-            setImageLoaded(false);
-          }}
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
+          onError={() => { setImageError(true); setImageLoaded(false); }}
+          crossOrigin="anonymous" referrerPolicy="no-referrer"
         />
       </div>
     );
@@ -640,29 +592,15 @@ export function InquilinosPage() {
 
       {error && (
         <div className="error-message" style={{
-          backgroundColor: '#fee2e2',
-          color: '#dc2626',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          backgroundColor: '#fee2e2', color: '#dc2626', padding: '12px 16px',
+          borderRadius: '8px', marginBottom: '16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between'
         }}>
           <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#dc2626',
-              fontSize: '18px',
-              padding: '0 8px'
-            }}
-          >
-            x
-          </button>
+          <button onClick={() => setError(null)} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: '#dc2626', fontSize: '18px', padding: '0 8px'
+          }}>x</button>
         </div>
       )}
 
@@ -684,20 +622,13 @@ export function InquilinosPage() {
 
       {loading ? (
         <div className="loading-container" style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: '60px',
-          color: '#6b7280'
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          padding: '60px', color: '#6b7280'
         }}>
           <span>{t('inq.cargando')}</span>
         </div>
       ) : inquilinos.length === 0 ? (
-        <div className="empty-state" style={{
-          textAlign: 'center',
-          padding: '60px',
-          color: '#6b7280'
-        }}>
+        <div className="empty-state" style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
           <p>{debouncedSearch ? t('inq.noEncontrados') : t('inq.sinInquilinos')}</p>
           {!debouncedSearch && (
             <button className="btn btn-primary" onClick={() => handleOpenModal()} style={{ marginTop: '16px' }}>
@@ -715,6 +646,10 @@ export function InquilinosPage() {
                 {inquilinos.map((inquilino) => {
                   const pagoInfo = pagosPorInquilino.get(inquilino.id);
                   const isSelected = inquilino.id === selectedInquilinoId;
+                  const displayAmount = getDisplayAmount(inquilino, pagoInfo);
+                  const displayDateInfo = getDisplayDate(inquilino, pagoInfo);
+                  const formattedAmount = formatCurrency(displayAmount);
+                  const formattedDate = displayDateInfo ? formatDate(displayDateInfo.date) : null;
 
                   return (
                     <div
@@ -723,14 +658,13 @@ export function InquilinosPage() {
                       onClick={() => handleCardClick(inquilino)}
                       onContextMenu={(e) => handleCardContextMenu(e, inquilino.id)}
                     >
-                      {/* Card content: horizontal layout */}
                       <div className="inq-card-body">
                         {/* Left side: Avatar + Info */}
                         <div className="inq-card-left">
                           <TenantAvatar
                             src={inquilino.avatar}
                             alt={`${inquilino.nombre} ${inquilino.apellido}`}
-                            size={48}
+                            size={52}
                           />
                           <div className="inq-card-info">
                             <span className="inq-card-name">
@@ -768,20 +702,22 @@ export function InquilinosPage() {
                             {getPaymentStatusLabel(pagoInfo?.estado)}
                           </span>
                           <div className="inq-card-payment">
-                            <span className="inq-card-amount">
-                              {pagoInfo?.monto != null
-                                ? `${formatCurrency(pagoInfo.monto)}${t('inq.porMes')}`
-                                : '—'}
-                            </span>
-                            <div className="inq-card-due">
-                              <span
-                                className="inq-card-due-dot"
-                                style={{ backgroundColor: getStatusDotColor(pagoInfo?.estado) }}
-                              />
-                              <span className="inq-card-due-date">
-                                {formatDate(pagoInfo?.fechaVencimiento)}
+                            {formattedAmount && (
+                              <span className="inq-card-amount">
+                                {formattedAmount}{t('inq.porMes')}
                               </span>
-                            </div>
+                            )}
+                            {formattedDate && (
+                              <div className="inq-card-due">
+                                <span
+                                  className="inq-card-due-dot"
+                                  style={{ backgroundColor: getStatusDotColor(pagoInfo?.estado) }}
+                                />
+                                <span className="inq-card-due-date">
+                                  {displayDateInfo?.isVence ? t('inq.venceFecha') : t('inq.desdeFecha')} {formattedDate}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -796,11 +732,7 @@ export function InquilinosPage() {
                   {totalElements > 0 ? `${startItem}-${endItem} de ${totalElements}` : `0 ${t('pag.resultados')}`}
                 </span>
                 <div className="pagination-controls">
-                  <button
-                    className="pagination-btn"
-                    disabled={currentPage === 0}
-                    onClick={() => handlePageChange(currentPage - 1)}
-                  >
+                  <button className="pagination-btn" disabled={currentPage === 0} onClick={() => handlePageChange(currentPage - 1)}>
                     &lt;
                   </button>
                   {getPageNumbers().map((page) => (
@@ -812,11 +744,7 @@ export function InquilinosPage() {
                       {page + 1}
                     </button>
                   ))}
-                  <button
-                    className="pagination-btn"
-                    disabled={currentPage >= totalPages - 1}
-                    onClick={() => handlePageChange(currentPage + 1)}
-                  >
+                  <button className="pagination-btn" disabled={currentPage >= totalPages - 1} onClick={() => handlePageChange(currentPage + 1)}>
                     &gt;
                   </button>
                 </div>
@@ -836,6 +764,7 @@ export function InquilinosPage() {
                   {geocodedInquilinos.map((geo) => {
                     const isSelected = geo.inquilino.id === selectedInquilinoId;
                     const color = getMarkerColor(geo.inquilino.id);
+                    const propName = geo.inquilino.propiedad?.nombre || `${geo.inquilino.nombre} ${geo.inquilino.apellido}`;
 
                     return (
                       <OverlayViewF
@@ -848,61 +777,57 @@ export function InquilinosPage() {
                           style={{
                             transform: 'translate(-50%, -100%)',
                             cursor: 'pointer',
-                            transition: 'transform 0.2s ease',
                           }}
                         >
+                          {/* Marker bubble */}
                           <div
                             style={{
-                              backgroundColor: isSelected ? '#1f2937' : color,
-                              color: 'white',
+                              backgroundColor: isSelected ? '#1f2937' : 'white',
+                              color: isSelected ? 'white' : '#1e293b',
                               padding: '6px 12px',
                               borderRadius: '20px',
-                              fontSize: '13px',
-                              fontWeight: 700,
+                              fontSize: '12px',
+                              fontWeight: 600,
                               whiteSpace: 'nowrap',
                               boxShadow: isSelected
                                 ? '0 4px 12px rgba(0,0,0,0.4)'
-                                : '0 2px 8px rgba(0,0,0,0.2)',
-                              transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                                : '0 2px 8px rgba(0,0,0,0.15)',
+                              transform: isSelected ? 'scale(1.1)' : 'scale(1)',
                               transition: 'all 0.2s ease',
                               position: 'relative',
                               zIndex: isSelected ? 10 : 1,
                               display: 'flex',
                               alignItems: 'center',
                               gap: '6px',
+                              border: isSelected ? 'none' : '1px solid #e5e7eb',
                             }}
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                              <circle cx="12" cy="7" r="4" />
-                            </svg>
-                            {geo.inquilino.nombre} {geo.inquilino.apellido}
+                            <span style={{
+                              width: 8, height: 8, borderRadius: '50%',
+                              backgroundColor: color, flexShrink: 0,
+                            }} />
+                            {propName}
                           </div>
-                          <div
-                            style={{
-                              width: 0,
-                              height: 0,
-                              borderLeft: '6px solid transparent',
-                              borderRight: '6px solid transparent',
-                              borderTop: `6px solid ${isSelected ? '#1f2937' : color}`,
-                              margin: '0 auto',
-                            }}
-                          />
+                          {/* Arrow */}
+                          <div style={{
+                            width: 0, height: 0,
+                            borderLeft: '6px solid transparent',
+                            borderRight: '6px solid transparent',
+                            borderTop: `6px solid ${isSelected ? '#1f2937' : 'white'}`,
+                            margin: '0 auto',
+                            filter: isSelected ? 'none' : 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))',
+                          }} />
+                          {/* Info popup on selection */}
                           {isSelected && (
                             <div style={{
-                              position: 'absolute',
-                              top: '100%',
-                              left: '50%',
-                              transform: 'translateX(-50%)',
-                              marginTop: '8px',
-                              backgroundColor: 'white',
-                              borderRadius: '12px',
-                              padding: '16px',
+                              position: 'absolute', top: '100%', left: '50%',
+                              transform: 'translateX(-50%)', marginTop: '8px',
+                              backgroundColor: 'white', borderRadius: '12px',
+                              padding: '14px 16px',
                               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                              minWidth: '220px',
-                              zIndex: 20,
+                              minWidth: '200px', zIndex: 20,
                             }}>
-                              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: '#1e293b' }}>
+                              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '3px', color: '#1e293b' }}>
                                 {geo.inquilino.nombre} {geo.inquilino.apellido}
                               </div>
                               <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>
@@ -914,15 +839,16 @@ export function InquilinosPage() {
                                 </div>
                               )}
                               {(() => {
-                                const pagoInfo = pagosPorInquilino.get(geo.inquilino.id);
+                                const pi = pagosPorInquilino.get(geo.inquilino.id);
+                                const amt = getDisplayAmount(geo.inquilino, pi);
                                 return (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-                                    <span className={`inq-status-badge ${getPaymentStatusClass(pagoInfo?.estado)}`} style={{ fontSize: '11px' }}>
-                                      {getPaymentStatusLabel(pagoInfo?.estado)}
+                                    <span className={`inq-status-badge ${getPaymentStatusClass(pi?.estado)}`} style={{ fontSize: '11px' }}>
+                                      {getPaymentStatusLabel(pi?.estado)}
                                     </span>
-                                    {pagoInfo?.monto != null && (
+                                    {amt != null && (
                                       <span style={{ fontSize: '12px', fontWeight: 600, color: '#1e293b' }}>
-                                        {formatCurrency(pagoInfo.monto)}
+                                        {formatCurrency(amt)}{t('inq.porMes')}
                                       </span>
                                     )}
                                   </div>
@@ -969,28 +895,17 @@ export function InquilinosPage() {
         return (
           <div
             className="inq-context-menu"
-            style={{
-              position: 'fixed',
-              top: contextMenu.y,
-              left: contextMenu.x,
-              zIndex: 1000,
-            }}
+            style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x, zIndex: 1000 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              className="inq-context-item"
-              onClick={() => { handleOpenModal(inquilino); setContextMenu(null); }}
-            >
+            <button className="inq-context-item" onClick={() => { handleOpenModal(inquilino); setContextMenu(null); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
               {t('inq.editarBtn')}
             </button>
-            <button
-              className="inq-context-item"
-              onClick={() => { handleContactar(inquilino); setContextMenu(null); }}
-            >
+            <button className="inq-context-item" onClick={() => { handleContactar(inquilino); setContextMenu(null); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                 <polyline points="22,6 12,13 2,6" />
@@ -998,10 +913,7 @@ export function InquilinosPage() {
               {t('inq.contactar')}
             </button>
             <div className="inq-context-divider" />
-            <button
-              className="inq-context-item inq-context-danger"
-              onClick={() => { handleDelete(inquilino.id); setContextMenu(null); }}
-            >
+            <button className="inq-context-item inq-context-danger" onClick={() => { handleDelete(inquilino.id); setContextMenu(null); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3,6 5,6 21,6" />
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -1012,7 +924,7 @@ export function InquilinosPage() {
         );
       })()}
 
-      {/* Modal - CRUD modal */}
+      {/* Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
@@ -1030,118 +942,47 @@ export function InquilinosPage() {
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="nombre">{t('inq.nombre')}</label>
-                    <input
-                      type="text"
-                      id="nombre"
-                      name="nombre"
-                      value={formData.nombre}
-                      onChange={handleInputChange}
-                      required
-                    />
+                    <input type="text" id="nombre" name="nombre" value={formData.nombre} onChange={handleInputChange} required />
                   </div>
                   <div className="form-group">
                     <label htmlFor="apellido">{t('inq.apellido')}</label>
-                    <input
-                      type="text"
-                      id="apellido"
-                      name="apellido"
-                      value={formData.apellido}
-                      onChange={handleInputChange}
-                      required
-                    />
+                    <input type="text" id="apellido" name="apellido" value={formData.apellido} onChange={handleInputChange} required />
                   </div>
                 </div>
-
                 <div className="form-group">
                   <label htmlFor="email">{t('inq.email')}</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} required />
                 </div>
-
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="telefono">{t('inq.telefono')}</label>
-                    <input
-                      type="tel"
-                      id="telefono"
-                      name="telefono"
-                      value={formData.telefono}
-                      onChange={handleInputChange}
-                      required
-                    />
+                    <input type="tel" id="telefono" name="telefono" value={formData.telefono} onChange={handleInputChange} required />
                   </div>
                   <div className="form-group">
                     <label htmlFor="documento">{t('inq.documento')}</label>
-                    <input
-                      type="text"
-                      id="documento"
-                      name="documento"
-                      value={formData.documento}
-                      onChange={handleInputChange}
-                      required
-                    />
+                    <input type="text" id="documento" name="documento" value={formData.documento} onChange={handleInputChange} required />
                   </div>
                 </div>
-
-                {/* Contact Address */}
                 <div className="form-group">
                   <label htmlFor="direccionContacto">{t('inq.direccionContacto')}</label>
-                  <input
-                    type="text"
-                    id="direccionContacto"
-                    name="direccionContacto"
-                    value={formData.direccionContacto || ''}
-                    onChange={handleInputChange}
-                    placeholder={t('inq.placeholder.direccion')}
-                  />
+                  <input type="text" id="direccionContacto" name="direccionContacto" value={formData.direccionContacto || ''} onChange={handleInputChange} placeholder={t('inq.placeholder.direccion')} />
                 </div>
-
                 <div className="form-group">
                   <label htmlFor="propiedadId">{t('inq.propiedad')}</label>
-                  <select
-                    id="propiedadId"
-                    name="propiedadId"
-                    value={formData.propiedadId || ''}
-                    onChange={handleInputChange}
-                  >
+                  <select id="propiedadId" name="propiedadId" value={formData.propiedadId || ''} onChange={handleInputChange}>
                     <option value="">{t('inq.sinPropiedad')}</option>
                     {propiedadesDisponibles.map((propiedad) => (
-                      <option key={propiedad.id} value={propiedad.id}>
-                        {propiedad.nombre} - {propiedad.direccion}
-                      </option>
+                      <option key={propiedad.id} value={propiedad.id}>{propiedad.nombre} - {propiedad.direccion}</option>
                     ))}
                   </select>
                 </div>
-
-                {/* Photo Upload */}
                 <div className="form-group">
                   <label>{t('inq.adjuntarFoto')}</label>
-                  <input
-                    type="file"
-                    ref={avatarInputRef}
-                    accept="image/*"
-                    onChange={handleAvatarFileChange}
-                    style={{ display: 'none' }}
-                  />
+                  <input type="file" ref={avatarInputRef} accept="image/*" onChange={handleAvatarFileChange} style={{ display: 'none' }} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <TenantAvatar
-                      src={avatarPreview || (editingInquilino?.avatar) || undefined}
-                      alt="Avatar"
-                      size={64}
-                    />
+                    <TenantAvatar src={avatarPreview || (editingInquilino?.avatar) || undefined} alt="Avatar" size={64} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-sm"
-                        onClick={() => avatarInputRef.current?.click()}
-                        disabled={uploadingAvatar}
-                      >
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                           <polyline points="17,8 12,3 7,8" />
@@ -1149,48 +990,25 @@ export function InquilinosPage() {
                         </svg>
                         {editingInquilino?.avatar ? t('inq.cambiarFoto') : t('inq.adjuntarFoto')}
                       </button>
-                      {avatarFile && (
-                        <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                          {t('inq.archivoSeleccionado')} {avatarFile.name}
-                        </span>
-                      )}
+                      {avatarFile && <span style={{ fontSize: '12px', color: '#6b7280' }}>{t('inq.archivoSeleccionado')} {avatarFile.name}</span>}
                     </div>
                   </div>
-                  <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    {t('inq.fotoInfo')}
-                  </small>
+                  <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>{t('inq.fotoInfo')}</small>
                 </div>
-
-                {/* Identity Document Upload */}
                 <div className="form-group">
                   <label>{t('inq.adjuntarDocumento')}</label>
-                  <input
-                    type="file"
-                    ref={documentoInputRef}
-                    accept="image/*,.pdf"
-                    onChange={handleDocumentoFileChange}
-                    style={{ display: 'none' }}
-                  />
+                  <input type="file" ref={documentoInputRef} accept="image/*,.pdf" onChange={handleDocumentoFileChange} style={{ display: 'none' }} />
                   <div style={{
-                    border: '2px dashed #d1d5db',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    backgroundColor: '#f9fafb',
-                    transition: 'border-color 0.2s',
-                  }}
-                    onClick={() => documentoInputRef.current?.click()}
-                  >
+                    border: '2px dashed #d1d5db', borderRadius: '8px', padding: '16px',
+                    textAlign: 'center', cursor: 'pointer', backgroundColor: '#f9fafb',
+                  }} onClick={() => documentoInputRef.current?.click()}>
                     {documentoFile ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14,2 14,8 20,8" />
                         </svg>
-                        <span style={{ fontSize: '13px', color: '#374151' }}>
-                          {t('inq.archivoSeleccionado')} {documentoFile.name}
-                        </span>
+                        <span style={{ fontSize: '13px', color: '#374151' }}>{t('inq.archivoSeleccionado')} {documentoFile.name}</span>
                       </div>
                     ) : editingInquilino?.documentoIdentidadUrl ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -1198,16 +1016,9 @@ export function InquilinosPage() {
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14,2 14,8 20,8" />
                         </svg>
-                        <span style={{ fontSize: '13px', color: '#3b82f6' }}>
-                          {t('inq.cambiarDocumento')}
-                        </span>
-                        <a
-                          href={editingInquilino.documentoIdentidadUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          style={{ fontSize: '12px', color: '#3b82f6' }}
-                        >
+                        <span style={{ fontSize: '13px', color: '#3b82f6' }}>{t('inq.cambiarDocumento')}</span>
+                        <a href={editingInquilino.documentoIdentidadUrl} target="_blank" rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()} style={{ fontSize: '12px', color: '#3b82f6' }}>
                           {t('inq.verDocumento')}
                         </a>
                       </div>
@@ -1218,15 +1029,11 @@ export function InquilinosPage() {
                           <polyline points="17,8 12,3 7,8" />
                           <line x1="12" y1="3" x2="12" y2="15" />
                         </svg>
-                        <span style={{ fontSize: '13px', color: '#6b7280' }}>
-                          {t('inq.adjuntarDocumento')}
-                        </span>
+                        <span style={{ fontSize: '13px', color: '#6b7280' }}>{t('inq.adjuntarDocumento')}</span>
                       </div>
                     )}
                   </div>
-                  <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    {t('inq.documentoInfo')}
-                  </small>
+                  <small style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px', display: 'block' }}>{t('inq.documentoInfo')}</small>
                 </div>
               </div>
               <div className="modal-footer">
