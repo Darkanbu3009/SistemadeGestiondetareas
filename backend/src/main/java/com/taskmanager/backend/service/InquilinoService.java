@@ -52,11 +52,6 @@ public class InquilinoService {
             throw new RuntimeException("Ya existe un inquilino con este email");
         }
 
-        // Check if documento is unique for this user
-        if (repository.findByDocumentoAndUser(inquilino.getDocumento(), user).isPresent()) {
-            throw new RuntimeException("Ya existe un inquilino con este documento");
-        }
-
         inquilino.setUser(user);
 
         // Assign property if provided
@@ -91,11 +86,7 @@ public class InquilinoService {
         if (inquilinoDetails.getTelefono() != null) {
             inquilino.setTelefono(inquilinoDetails.getTelefono());
         }
-        if (inquilinoDetails.getDocumento() != null && !inquilinoDetails.getDocumento().equals(inquilino.getDocumento())) {
-            // Check if new documento is unique
-            if (repository.findByDocumentoAndUser(inquilinoDetails.getDocumento(), user).isPresent()) {
-                throw new RuntimeException("Ya existe un inquilino con este documento");
-            }
+        if (inquilinoDetails.getDocumento() != null) {
             inquilino.setDocumento(inquilinoDetails.getDocumento());
         }
         // Always update avatar (even if null or empty to allow clearing it)
