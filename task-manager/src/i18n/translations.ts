@@ -325,6 +325,15 @@ export const translations: Record<Language, Record<string, string>> = {
     'inq.porMes': '/mes',
     'inq.venceFecha': 'Vence:',
     'inq.desdeFecha': 'Desde:',
+    'inq.nuevoInquilino': 'Nuevo Inquilino',
+    'inq.cobrar': 'Cobrar',
+    'inq.ver': 'Ver',
+    'inq.pagoVencido': 'Pago vencido',
+    'inq.statActivos': 'Activos',
+    'inq.statCasasOcupadas': 'Casas ocupadas',
+    'inq.statRentaTotal': 'Renta total',
+    'inq.statPendientes': 'Pendientes',
+    'inq.filtroTodos': 'Todos los estados',
 
     // Payments
     'pag.titulo': 'Pagos',
@@ -797,6 +806,15 @@ export const translations: Record<Language, Record<string, string>> = {
     'inq.venceFecha': 'Due:',
     'inq.desdeFecha': 'Since:',
     'inq.porMes': '/mo',
+    'inq.nuevoInquilino': 'New Tenant',
+    'inq.cobrar': 'Collect',
+    'inq.ver': 'View',
+    'inq.pagoVencido': 'Overdue',
+    'inq.statActivos': 'Active',
+    'inq.statCasasOcupadas': 'Occupied',
+    'inq.statRentaTotal': 'Total rent',
+    'inq.statPendientes': 'Pending',
+    'inq.filtroTodos': 'All statuses',
 
     // Payments
     'pag.titulo': 'Payments',
