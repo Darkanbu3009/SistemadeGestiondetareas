@@ -462,7 +462,7 @@ export function InquilinosPage() {
       case 'pagado': return '#10b981';
       case 'pendiente': return '#f59e0b';
       case 'atrasado': return '#ef4444';
-      default: return '#8b5cf6';
+      default: return '#2563eb';
     }
   };
 
