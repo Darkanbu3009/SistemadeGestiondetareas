@@ -187,9 +187,13 @@ export function InquilinosPage() {
         const allPagos = await getAllPagos();
         const pagoMap = new Map<number, InquilinoPagoInfo>();
         for (const pago of allPagos) {
-          const existing = pagoMap.get(pago.inquilinoId);
+          // Use inquilinoId if available, fallback to inquilino.id (backend serializes object, not ID)
+          const inqId = pago.inquilinoId ?? pago.inquilino?.id;
+          if (inqId == null) continue;
+          const existing = pagoMap.get(inqId);
+          // Keep the most recent payment (latest fechaVencimiento) to show current status
           if (!existing || new Date(pago.fechaVencimiento) > new Date(existing.fechaVencimiento || '')) {
-            pagoMap.set(pago.inquilinoId, {
+            pagoMap.set(inqId, {
               estado: pago.estado,
               monto: pago.monto,
               fechaVencimiento: pago.fechaVencimiento,
@@ -626,7 +630,7 @@ export function InquilinosPage() {
           }}
           onLoad={() => setImageLoaded(true)}
           onError={() => { setImageError(true); setImageLoaded(false); }}
-          crossOrigin="anonymous" referrerPolicy="no-referrer"
+          referrerPolicy="no-referrer"
         />
       </div>
     );
