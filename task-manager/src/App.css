@@ -3088,6 +3088,11 @@ body {
   color: #d97706;
 }
 
+.inq-stat-icon-red {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
 .inq-stat-info {
   display: flex;
   flex-direction: column;

@@ -94,7 +94,7 @@ interface InquilinoPagoInfo {
   fechaVencimiento: string | null;
 }
 
-type StatusFilter = 'todos' | 'pagado' | 'pendiente' | 'atrasado' | 'nuevo';
+type StatusFilter = 'todos' | 'activo' | 'pago_vencido';
 
 export function InquilinosPage() {
   const { t } = useLanguage();
@@ -205,11 +205,14 @@ export function InquilinosPage() {
   }, [inquilinos]);
 
   // Compute stats from allInquilinos + pagosPorInquilino
+  // Activo = pagado or no payment record, Pago vencido = pendiente/atrasado
   const stats = useMemo(() => {
-    const activos = allInquilinos.filter(i => {
+    const pagoVencido = allInquilinos.filter(i => {
       const pago = pagosPorInquilino.get(i.id);
-      return pago?.estado === 'pagado';
+      return pago?.estado === 'pendiente' || pago?.estado === 'atrasado';
     }).length;
+
+    const activos = allInquilinos.length - pagoVencido;
 
     const casasOcupadas = allInquilinos.filter(i => i.propiedad != null).length;
 
@@ -223,21 +226,21 @@ export function InquilinosPage() {
       }
     }
 
-    const pendientes = allInquilinos.filter(i => {
-      const pago = pagosPorInquilino.get(i.id);
-      return pago?.estado === 'pendiente' || pago?.estado === 'atrasado';
-    }).length;
-
-    return { activos, casasOcupadas, rentaTotal, pendientes };
+    return { activos, casasOcupadas, rentaTotal, pagoVencido };
   }, [allInquilinos, pagosPorInquilino]);
 
-  // Filter inquilinos by payment status
+  // Filter inquilinos by payment status (Activo = pagado, Pago vencido = pendiente/atrasado)
   const filteredInquilinos = useMemo(() => {
     if (statusFilter === 'todos') return inquilinos;
     return inquilinos.filter(inq => {
       const pago = pagosPorInquilino.get(inq.id);
-      if (statusFilter === 'nuevo') return !pago?.estado;
-      return pago?.estado === statusFilter;
+      if (statusFilter === 'activo') {
+        return !pago?.estado || pago.estado === 'pagado';
+      }
+      if (statusFilter === 'pago_vencido') {
+        return pago?.estado === 'pendiente' || pago?.estado === 'atrasado';
+      }
+      return true;
     });
   }, [inquilinos, statusFilter, pagosPorInquilino]);
 
@@ -501,31 +504,21 @@ export function InquilinosPage() {
     return null;
   };
 
+  // Status: only 2 options - Activo (pagado) or Pago vencido (pendiente/atrasado)
   const getPaymentStatusLabel = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
-    switch (estado) {
-      case 'pagado': return t('inq.activo');
-      case 'pendiente': return t('inq.pendientePago');
-      case 'atrasado': return t('inq.pagoVencido');
-      default: return t('inq.nuevo');
-    }
+    if (estado === 'pagado') return t('inq.activo');
+    if (estado === 'pendiente' || estado === 'atrasado') return t('inq.pagoVencido');
+    return t('inq.activo');
   };
 
   const getPaymentStatusClass = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
-    switch (estado) {
-      case 'pagado': return 'inq-status-paid';
-      case 'pendiente': return 'inq-status-pending';
-      case 'atrasado': return 'inq-status-overdue';
-      default: return 'inq-status-new';
-    }
+    if (estado === 'pendiente' || estado === 'atrasado') return 'inq-status-overdue';
+    return 'inq-status-paid';
   };
 
   const getStatusDotColor = (estado?: 'pagado' | 'pendiente' | 'atrasado' | null): string => {
-    switch (estado) {
-      case 'pagado': return '#10b981';
-      case 'pendiente': return '#f59e0b';
-      case 'atrasado': return '#ef4444';
-      default: return '#2563eb';
-    }
+    if (estado === 'pendiente' || estado === 'atrasado') return '#ef4444';
+    return '#10b981';
   };
 
   const getMarkerColor = (inquilinoId: number) => {
@@ -725,7 +718,7 @@ export function InquilinosPage() {
         </div>
 
         <div className="inq-stat-card">
-          <div className="inq-stat-icon inq-stat-icon-amber">
+          <div className="inq-stat-icon inq-stat-icon-red">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
@@ -733,8 +726,8 @@ export function InquilinosPage() {
             </svg>
           </div>
           <div className="inq-stat-info">
-            <span className="inq-stat-value">{stats.pendientes}</span>
-            <span className="inq-stat-label">{t('inq.statPendientes')}</span>
+            <span className="inq-stat-value">{stats.pagoVencido}</span>
+            <span className="inq-stat-label">{t('inq.pagoVencido')}</span>
           </div>
         </div>
 
@@ -745,10 +738,8 @@ export function InquilinosPage() {
             className="inq-filter-select"
           >
             <option value="todos">{t('inq.filtroTodos')}</option>
-            <option value="pagado">{t('inq.activo')}</option>
-            <option value="pendiente">{t('inq.pendientePago')}</option>
-            <option value="atrasado">{t('inq.pagoVencido')}</option>
-            <option value="nuevo">{t('inq.nuevo')}</option>
+            <option value="activo">{t('inq.activo')}</option>
+            <option value="pago_vencido">{t('inq.pagoVencido')}</option>
           </select>
         </div>
       </div>
@@ -840,9 +831,7 @@ export function InquilinosPage() {
                             <circle cx="12" cy="10" r="3" />
                           </svg>
                           <span>
-                            {inquilino.propiedad
-                              ? `${inquilino.propiedad.direccion}, ${inquilino.propiedad.ciudad}`
-                              : inquilino.direccionContacto || t('inq.sinDireccion')}
+                            {inquilino.direccionContacto || t('inq.sinDireccion')}
                           </span>
                         </div>
                         <div className="inq-card-detail">
